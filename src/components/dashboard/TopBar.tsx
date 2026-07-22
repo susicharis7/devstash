@@ -1,12 +1,22 @@
+"use client";
+
 import { FolderPlus, PanelLeft, Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSidebar } from "@/components/dashboard/sidebar-context";
 
 export function TopBar() {
+  const { toggleSidebar } = useSidebar();
+
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
-      <Button variant="ghost" size="icon" aria-label="Toggle sidebar">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Toggle sidebar"
+        onClick={toggleSidebar}
+      >
         <PanelLeft className="size-5" />
       </Button>
 

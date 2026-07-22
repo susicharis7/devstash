@@ -1,17 +1,47 @@
-import { Layers } from "lucide-react";
+"use client";
+
+import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { SidebarContent } from "@/components/dashboard/SidebarContent";
+import { useSidebar } from "@/components/dashboard/sidebar-context";
 
 export function Sidebar() {
+  const { open, openMobile, setOpenMobile } = useSidebar();
+
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r bg-sidebar md:flex">
-      <div className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-        <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Layers className="size-4" />
+    <>
+      <aside
+        className={cn(
+          "hidden shrink-0 overflow-hidden border-r transition-[width] duration-200 ease-in-out md:block",
+          open ? "w-64" : "w-0 border-r-0"
+        )}
+      >
+        <div className="h-full w-64">
+          <SidebarContent />
         </div>
-        <span className="text-base font-semibold">DevStash</span>
-      </div>
-      <div className="p-4">
-        <h2 className="text-lg font-semibold">Sidebar</h2>
-      </div>
-    </aside>
+      </aside>
+
+      <Sheet open={openMobile} onOpenChange={setOpenMobile}>
+        <SheetContent
+          side="left"
+          showCloseButton={false}
+          className="w-64 gap-0 p-0"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Sidebar navigation</SheetTitle>
+            <SheetDescription>
+              Browse item types and collections.
+            </SheetDescription>
+          </SheetHeader>
+          <SidebarContent />
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }
