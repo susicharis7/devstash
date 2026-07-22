@@ -5,6 +5,7 @@
 - Reuse everything you can
 - If we have more than 1 return in a component, that is a separate component
 - Centralize everything that makes sense, if we use it in more than 2 places
+- Do NOT add any comments anywhere when writing code
 
 ## TypeScript
 
