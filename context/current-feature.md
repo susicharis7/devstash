@@ -1,7 +1,8 @@
 # Current Feature
 
-Dashboard UI Phase 1 — foundational dashboard layout and shell. Phase 1 of 3.
-See `@context/features/dashboard-phase-1-spec.md`.
+Dashboard UI Phase 2 — functional collapsible sidebar with types, collections,
+and user area. Phase 2 of 3.
+See `@context/features/dashboard-phase-2-spec.md`.
 
 ## Status
 
@@ -9,20 +10,18 @@ Completed
 
 ## Goals
 
-- Initialize ShadCN UI and install the needed components
-- Add a dashboard route at `/dashboard`
-- Build the main dashboard layout and any global styles
-- Dark mode by default
-- Top bar with search and a new item button (display only)
-- Placeholder sidebar and main area — just an `h2` reading "Sidebar" and "Main" for now
+- Collapsible sidebar with a drawer icon to open/close
+- Item types linking to their item lists at `/items/TYPE` (e.g. `/items/snippets`)
+- Favorite collections section
+- Most recent collections section
+- User avatar area at the bottom of the sidebar
+- Always render as a drawer on mobile view
 
 ## Notes
 
-- Phase 1 of 3; phases 2 and 3 are specced in `@context/features/dashboard-phase-2-spec.md`
-  and `@context/features/dashboard-phase-3-spec.md`.
+- Phase 2 of 3; phase 3 is specced in `@context/features/dashboard-phase-3-spec.md`.
 - Layout should follow `@context/screenshots/dashboard-ui-main.png`.
-- Use `@src/lib/mock-data.ts` as the data source (no database yet).
-- Top bar controls are display-only in this phase (non-functional).
+- Use `@src/lib/mock-data.ts` as the data source (no database yet) — import directly.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -37,3 +36,11 @@ Completed
   top bar shell. Top bar search and action buttons are display-only; sidebar and
   main area are placeholders for phases 2 and 3. Merged to `main` via
   `feature/dashboard-phase-1`.
+- **2026-07-22 — Dashboard UI Phase 2.** Built the functional sidebar: collapsible
+  on desktop (top-bar drawer icon toggles it) and an overlay drawer on mobile.
+  Added a collapsible Types section (links to `/items/{slug}` with color-coded
+  icons + counts), a Collections section split into Favorites and All Collections,
+  and a bottom user-avatar area with a settings button. Added a `SidebarProvider`
+  context plus a `useIsMobile` hook and a centralized item-type icon map; installed
+  ShadCN `avatar`, `separator`, `scroll-area`, `sheet`, `tooltip`. Data comes from
+  `@src/lib/mock-data.ts`. Merged to `main` via `feature/dashboard-phase-2`.
