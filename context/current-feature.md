@@ -5,7 +5,7 @@ See `@context/features/dashboard-phase-1-spec.md`.
 
 ## Status
 
-In Progress
+Completed
 
 ## Goals
 
@@ -32,3 +32,8 @@ In Progress
   boilerplate assets, added project context docs (`project-overview`,
   `coding-standards`, `ai-interaction`, `current-feature`) and CLAUDE.md guidance.
   Connected to `github.com/susicharis7/devstash` and pushed to `main` (`413a9a2`).
+- **2026-07-22 — Dashboard UI Phase 1.** Initialized ShadCN UI (button, input),
+  enabled dark mode by default, and added the `/dashboard` route with a sidebar +
+  top bar shell. Top bar search and action buttons are display-only; sidebar and
+  main area are placeholders for phases 2 and 3. Merged to `main` via
+  `feature/dashboard-phase-1`.
