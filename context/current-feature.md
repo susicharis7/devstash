@@ -1,8 +1,8 @@
 # Current Feature
 
-Dashboard UI Phase 2 — functional collapsible sidebar with types, collections,
-and user area. Phase 2 of 3.
-See `@context/features/dashboard-phase-2-spec.md`.
+Dashboard UI Phase 3 — the main content area: stats, recent collections, and
+pinned/recent items. Phase 3 of 3.
+See `@context/features/dashboard-phase-3-spec.md`.
 
 ## Status
 
@@ -10,18 +10,20 @@ Completed
 
 ## Goals
 
-- Collapsible sidebar with a drawer icon to open/close
-- Item types linking to their item lists at `/items/TYPE` (e.g. `/items/snippets`)
-- Favorite collections section
-- Most recent collections section
-- User avatar area at the bottom of the sidebar
-- Always render as a drawer on mobile view
+- Build out the main content area to the right of the sidebar
+- 4 stats cards at the top: total items, total collections, favorite items,
+  favorite collections (not shown in the screenshot)
+- Recent collections section
+- Pinned items section
+- 10 most recent items
 
 ## Notes
 
-- Phase 2 of 3; phase 3 is specced in `@context/features/dashboard-phase-3-spec.md`.
+- Phase 3 of 3; the final phase of the dashboard UI layout.
 - Layout should follow `@context/screenshots/dashboard-ui-main.png`.
-- Use `@src/lib/mock-data.ts` as the data source (no database yet) — import directly.
+- Use `@src/lib/mock-data.ts` as the data source (no database yet) — import
+  directly. (The spec references `mock-data.js`, but the file is `mock-data.ts`.)
+- The stats cards are an addition not present in the reference screenshot.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -44,3 +46,10 @@ Completed
   context plus a `useIsMobile` hook and a centralized item-type icon map; installed
   ShadCN `avatar`, `separator`, `scroll-area`, `sheet`, `tooltip`. Data comes from
   `@src/lib/mock-data.ts`. Merged to `main` via `feature/dashboard-phase-2`.
+- **2026-07-22 — Dashboard UI Phase 3.** Built the main content area: 4 stats
+  cards (items, collections, favorite items, favorite collections), a recent
+  Collections grid (top 6 by recency, color-coded by dominant type), a Pinned
+  items section, and the 10 most recent items. Added display-only `StatCard`,
+  `CollectionCard`, and reusable `ItemRow` components plus an `itemTypesById`
+  lookup in mock data. Completes the 3-phase dashboard UI layout. Merged to
+  `main` via `feature/dashboard-phase-3`.

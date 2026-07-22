@@ -1,3 +1,113 @@
+import Link from "next/link";
+import { FolderHeart, FolderOpen, LayoutGrid, Pin, Star } from "lucide-react";
+
+import { collections, items } from "@/lib/mock-data";
+import { CollectionCard } from "@/components/dashboard/CollectionCard";
+import { ItemRow } from "@/components/dashboard/ItemRow";
+import { StatCard } from "@/components/dashboard/StatCard";
+
+function SectionHeader({
+  title,
+  icon: Icon,
+  action,
+}: {
+  title: string;
+  icon?: typeof Pin;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="flex items-center gap-2 text-xl font-semibold">
+        {Icon ? <Icon className="size-5 text-muted-foreground" /> : null}
+        {title}
+      </h2>
+      {action}
+    </div>
+  );
+}
+
+const byNewest = (a: string, b: string) => b.localeCompare(a);
+
 export default function DashboardPage() {
-  return <h2 className="text-lg font-semibold">Main</h2>;
+  const recentCollections = [...collections]
+    .sort((a, b) => byNewest(a.updatedAt, b.updatedAt))
+    .slice(0, 6);
+  const pinnedItems = items.filter((item) => item.isPinned);
+  const recentItems = [...items]
+    .sort((a, b) => byNewest(a.createdAt, b.createdAt))
+    .slice(0, 10);
+
+  const stats = [
+    { icon: LayoutGrid, label: "Items", value: items.length },
+    { icon: FolderOpen, label: "Collections", value: collections.length },
+    {
+      icon: Star,
+      label: "Favorite Items",
+      value: items.filter((item) => item.isFavorite).length,
+    },
+    {
+      icon: FolderHeart,
+      label: "Favorite Collections",
+      value: collections.filter((collection) => collection.isFavorite).length,
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-10">
+      <header>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="mt-1 text-muted-foreground">
+          Your developer knowledge hub
+        </p>
+      </header>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <StatCard
+            key={stat.label}
+            icon={stat.icon}
+            label={stat.label}
+            value={stat.value}
+          />
+        ))}
+      </div>
+
+      <section>
+        <SectionHeader
+          title="Collections"
+          action={
+            <Link
+              href="/collections"
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              View all
+            </Link>
+          }
+        />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {recentCollections.map((collection) => (
+            <CollectionCard key={collection.id} collection={collection} />
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <SectionHeader title="Pinned" icon={Pin} />
+        <div className="space-y-3">
+          {pinnedItems.map((item) => (
+            <ItemRow key={item.id} item={item} />
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <SectionHeader title="Recent" icon={LayoutGrid} />
+        <div className="space-y-3">
+          {recentItems.map((item) => (
+            <ItemRow key={item.id} item={item} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 }

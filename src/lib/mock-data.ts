@@ -130,6 +130,10 @@ export const itemTypes: ItemType[] = [
   },
 ];
 
+export const itemTypesById: Record<string, ItemType> = Object.fromEntries(
+  itemTypes.map((type) => [type.id, type])
+);
+
 export const collections: Collection[] = [
   {
     id: "col-react-patterns",
