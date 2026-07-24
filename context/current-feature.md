@@ -1,8 +1,8 @@
 # Current Feature
 
-Dashboard collections from the database — replace the dummy collection data in the
-dashboard main area with real data fetched from Neon via Prisma.
-See `@context/features/06-dashboard-collections-spec.md`.
+Dashboard items from the database — replace the dummy Pinned and Recent item data
+in the dashboard main area with real data fetched from Neon via Prisma.
+See `@context/features/07-dashboard-items-spec.md`.
 
 ## Status
 
@@ -10,29 +10,30 @@ Completed
 
 ## Goals
 
-- Create `src/lib/db/collections.ts` with data-fetching function(s) (Prisma)
-- Fetch collections directly in the dashboard server component (no client fetch)
-- Replace the mock-data collections in the main area with the 6 recent collections
-  from the database — keep the exact current design/layout
-- Derive each collection card's border color from the **most-used content type**
-  in that collection
-- Show small icons for all content types present in the collection
-- Update the collection stats display to reflect real data
+- Create `src/lib/db/items.ts` with data-fetching functions (pinned + recent)
+- Fetch items directly in the dashboard server component (no client fetch)
+- Replace the mock-data Pinned and Recent items with real DB items — keep the
+  current `ItemRow` design
+- Item card icon/border color derived from the item's type
+- Display item type tags and everything currently shown (title, pin/favorite
+  markers, description, tags, date)
+- If there are no pinned items, do not render the Pinned section at all
+- Ensure the stats display reflects real data (already DB-backed from feature 06)
 
 ## Notes
 
-- **Scope:** collections only. Do **not** render the items underneath the cards yet
-  — that comes in a later feature.
-- Keep the existing `CollectionCard` design; reference
+- **Scope:** items only. After this, the whole dashboard main area is DB-backed;
+  only the sidebar still uses `@src/lib/mock-data.ts` (a later feature).
+- Follows the same pattern as `src/lib/db/collections.ts`: scope to the seeded
+  demo user (`demo@devstash.io`); the page already uses `connection()` for
+  request-time rendering, so `next build` won't touch the DB.
+- Keep the existing `ItemRow` design; reference
   `@context/screenshots/dashboard-ui-main.png` if needed.
-- Data source shifts from `@src/lib/mock-data.ts` to the DB. The dashboard page is
-  a server component, so it can call the Prisma fetch function directly.
-- Border color currently comes from the first `itemTypeId`; this changes it to the
-  most-used type, which requires aggregating item content types per collection.
-- Seeded data is available (`npm run db:seed`) for the development branch.
-- **Decisions:** show the 6 most recent collections ordered by `updatedAt`
-  (matches current behavior); scope to the seeded demo user
-  (`demo@devstash.io`) for now, and swap to the session user once NextAuth lands.
+- **Seed-data caveat:** the current seed marks no items as pinned or favorite and
+  adds no tags. So after this change the Pinned section will be hidden (0 pinned),
+  Recent will show the 10 newest items, and no tag chips will render. Consider
+  updating the seed to flag a few pinned/favorite items and add tags for a richer
+  demo (out of scope here — flag to the user).
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -92,3 +93,12 @@ Completed
   component using `connection()` to render at request time (so `next build` never
   touches the DB). Pinned/Recent items and the sidebar still use mock data
   (deferred). Merged to `main` via `feature/dashboard-collections-db`.
+- **2026-07-24 — Dashboard items from the database.** Added `src/lib/db/items.ts`
+  (`getPinnedItems`, `getRecentItems`) and switched the dashboard Pinned and Recent
+  sections to real DB data via Prisma; the Pinned section is hidden when there are
+  no pinned items. `ItemRow` now takes a DB view model (type-derived icon/border,
+  tags, pin/favorite markers, date) and no longer uses mock data. Enriched
+  `prisma/seed.ts` to mark a few items pinned/favorite, add 15 tags, and favorite
+  two collections (also clears tags on override). The dashboard main area is now
+  fully DB-backed; only the sidebar still uses mock data. Merged to `main` via
+  `feature/dashboard-items`.

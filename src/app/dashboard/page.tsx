@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FolderHeart, FolderOpen, LayoutGrid, Pin, Star } from "lucide-react";
 
 import { getDashboardStats, getRecentCollections } from "@/lib/db/collections";
-import { items } from "@/lib/mock-data";
+import { getPinnedItems, getRecentItems } from "@/lib/db/items";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { ItemRow } from "@/components/dashboard/ItemRow";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -28,20 +28,16 @@ function SectionHeader({
   );
 }
 
-const byNewest = (a: string, b: string) => b.localeCompare(a);
-
 export default async function DashboardPage() {
   await connection();
 
-  const [recentCollections, stats] = await Promise.all([
-    getRecentCollections(),
-    getDashboardStats(),
-  ]);
-
-  const pinnedItems = items.filter((item) => item.isPinned);
-  const recentItems = [...items]
-    .sort((a, b) => byNewest(a.createdAt, b.createdAt))
-    .slice(0, 10);
+  const [recentCollections, stats, pinnedItems, recentItems] =
+    await Promise.all([
+      getRecentCollections(),
+      getDashboardStats(),
+      getPinnedItems(),
+      getRecentItems(),
+    ]);
 
   const statCards = [
     { icon: LayoutGrid, label: "Items", value: stats.items },
@@ -93,14 +89,16 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section>
-        <SectionHeader title="Pinned" icon={Pin} />
-        <div className="space-y-3">
-          {pinnedItems.map((item) => (
-            <ItemRow key={item.id} item={item} />
-          ))}
-        </div>
-      </section>
+      {pinnedItems.length > 0 ? (
+        <section>
+          <SectionHeader title="Pinned" icon={Pin} />
+          <div className="space-y-3">
+            {pinnedItems.map((item) => (
+              <ItemRow key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section>
         <SectionHeader title="Recent" icon={LayoutGrid} />

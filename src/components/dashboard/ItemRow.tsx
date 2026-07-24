@@ -1,6 +1,6 @@
 import { Pin, Star } from "lucide-react";
 
-import { itemTypesById, type Item } from "@/lib/mock-data";
+import type { DashboardItem } from "@/lib/db/items";
 import { getItemTypeIcon } from "@/lib/item-type-icons";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -9,19 +9,17 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-export function ItemRow({ item }: { item: Item }) {
-  const type = itemTypesById[item.itemTypeId];
-  const accent = type?.color ?? "#6b7280";
-  const Icon = getItemTypeIcon(type?.icon ?? "File");
+export function ItemRow({ item }: { item: DashboardItem }) {
+  const Icon = getItemTypeIcon(item.icon);
 
   return (
     <div
       className="flex items-start gap-4 rounded-xl border border-l-4 bg-card p-4"
-      style={{ borderLeftColor: accent }}
+      style={{ borderLeftColor: item.accentColor }}
     >
       <div
         className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
-        style={{ color: accent }}
+        style={{ color: item.accentColor }}
       >
         <Icon className="size-5" />
       </div>

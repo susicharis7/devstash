@@ -17,11 +17,15 @@ interface SeedItem {
   content?: string;
   url?: string;
   language?: string;
+  isPinned?: boolean;
+  isFavorite?: boolean;
+  tags?: string[];
 }
 
 interface SeedCollection {
   name: string;
   description: string;
+  isFavorite?: boolean;
   items: SeedItem[];
 }
 
@@ -39,6 +43,7 @@ const COLLECTIONS: SeedCollection[] = [
   {
     name: "React Patterns",
     description: "Reusable React patterns and hooks",
+    isFavorite: true,
     items: [
       {
         title: "useDebounce hook",
@@ -46,6 +51,9 @@ const COLLECTIONS: SeedCollection[] = [
         contentType: "TEXT",
         language: "typescript",
         description: "Debounce a rapidly changing value",
+        isPinned: true,
+        isFavorite: true,
+        tags: ["react", "hooks", "typescript"],
         content: [
           'import { useEffect, useState } from "react";',
           "",
@@ -65,6 +73,8 @@ const COLLECTIONS: SeedCollection[] = [
         contentType: "TEXT",
         language: "typescript",
         description: "Context provider + hook for compound components",
+        isFavorite: true,
+        tags: ["react", "patterns"],
         content: [
           '"use client";',
           'import { createContext, useContext, useState } from "react";',
@@ -90,6 +100,7 @@ const COLLECTIONS: SeedCollection[] = [
         contentType: "TEXT",
         language: "typescript",
         description: "Group an array into a record by a key function",
+        tags: ["typescript", "utils"],
         content: [
           "export function groupBy<T, K extends string>(items: T[], keyFn: (item: T) => K): Record<K, T[]> {",
           "  return items.reduce((acc, item) => {",
@@ -111,6 +122,8 @@ const COLLECTIONS: SeedCollection[] = [
         typeName: "prompt",
         contentType: "TEXT",
         description: "Thorough review of a code block",
+        isPinned: true,
+        tags: ["ai", "review"],
         content:
           "Review the following code for correctness, security, performance, and readability. List concrete issues ordered by severity, then propose a corrected version:\n\n{code}",
       },
@@ -119,6 +132,7 @@ const COLLECTIONS: SeedCollection[] = [
         typeName: "prompt",
         contentType: "TEXT",
         description: "Generate docs from a function/module",
+        tags: ["ai", "docs"],
         content:
           "Write clear developer documentation for the following code. Include a summary, parameters, return value, and a short usage example:\n\n{code}",
       },
@@ -127,6 +141,7 @@ const COLLECTIONS: SeedCollection[] = [
         typeName: "prompt",
         contentType: "TEXT",
         description: "Refactor while preserving behaviour",
+        tags: ["ai", "refactor"],
         content:
           "Refactor the following code for readability and maintainability without changing its behaviour. Explain each change briefly, then output the final code:\n\n{code}",
       },
@@ -135,6 +150,7 @@ const COLLECTIONS: SeedCollection[] = [
   {
     name: "DevOps",
     description: "Infrastructure and deployment resources",
+    isFavorite: true,
     items: [
       {
         title: "Next.js production Dockerfile",
@@ -142,6 +158,7 @@ const COLLECTIONS: SeedCollection[] = [
         contentType: "TEXT",
         language: "dockerfile",
         description: "Multi-step build for a Next.js app",
+        tags: ["docker"],
         content: [
           "FROM node:22-alpine",
           "WORKDIR /app",
@@ -159,6 +176,7 @@ const COLLECTIONS: SeedCollection[] = [
         contentType: "TEXT",
         language: "bash",
         description: "Build a Docker image and push to the registry",
+        tags: ["docker", "ci"],
         content:
           "docker build -t devstash . && docker push registry.example.com/devstash:latest",
       },
@@ -174,6 +192,7 @@ const COLLECTIONS: SeedCollection[] = [
         typeName: "link",
         contentType: "URL",
         description: "CI/CD with GitHub Actions",
+        tags: ["ci"],
         url: "https://docs.github.com/en/actions",
       },
     ],
@@ -188,6 +207,8 @@ const COLLECTIONS: SeedCollection[] = [
         contentType: "TEXT",
         language: "bash",
         description: "Soft-reset the most recent commit",
+        isFavorite: true,
+        tags: ["git"],
         content: "git reset --soft HEAD~1",
       },
       {
@@ -225,6 +246,7 @@ const COLLECTIONS: SeedCollection[] = [
         typeName: "link",
         contentType: "URL",
         description: "Utility-first CSS reference",
+        tags: ["css", "tailwind"],
         url: "https://tailwindcss.com/docs",
       },
       {
@@ -232,6 +254,7 @@ const COLLECTIONS: SeedCollection[] = [
         typeName: "link",
         contentType: "URL",
         description: "Composable React component library",
+        tags: ["react", "ui"],
         url: "https://ui.shadcn.com",
       },
       {
@@ -255,6 +278,7 @@ const COLLECTIONS: SeedCollection[] = [
 async function clearData(prisma: PrismaClient) {
   await prisma.itemCollection.deleteMany();
   await prisma.item.deleteMany();
+  await prisma.tag.deleteMany();
   await prisma.collection.deleteMany();
   await prisma.itemType.deleteMany();
   await prisma.user.deleteMany();
@@ -280,10 +304,28 @@ async function seed(prisma: PrismaClient) {
     typeIdByName[type.name] = created.id;
   }
 
+  const tagNames = [
+    ...new Set(
+      COLLECTIONS.flatMap((collection) =>
+        collection.items.flatMap((item) => item.tags ?? [])
+      )
+    ),
+  ];
+  const tagIdByName: Record<string, string> = {};
+  for (const name of tagNames) {
+    const created = await prisma.tag.create({ data: { name } });
+    tagIdByName[name] = created.id;
+  }
+
   let itemCount = 0;
   for (const definition of COLLECTIONS) {
     const collection = await prisma.collection.create({
-      data: { name: definition.name, description: definition.description, userId: user.id },
+      data: {
+        name: definition.name,
+        description: definition.description,
+        isFavorite: definition.isFavorite ?? false,
+        userId: user.id,
+      },
     });
     for (const item of definition.items) {
       await prisma.item.create({
@@ -294,16 +336,26 @@ async function seed(prisma: PrismaClient) {
           content: item.content ?? null,
           url: item.url ?? null,
           language: item.language ?? null,
+          isPinned: item.isPinned ?? false,
+          isFavorite: item.isFavorite ?? false,
           userId: user.id,
           itemTypeId: typeIdByName[item.typeName],
           collections: { create: { collectionId: collection.id } },
+          tags: item.tags?.length
+            ? { connect: item.tags.map((name) => ({ id: tagIdByName[name] })) }
+            : undefined,
         },
       });
       itemCount += 1;
     }
   }
 
-  return { itemTypes: ITEM_TYPES.length, collections: COLLECTIONS.length, items: itemCount };
+  return {
+    itemTypes: ITEM_TYPES.length,
+    collections: COLLECTIONS.length,
+    items: itemCount,
+    tags: tagNames.length,
+  };
 }
 
 async function main() {
@@ -370,7 +422,7 @@ async function main() {
 
     const summary = await seed(prisma);
     console.log(
-      `\n✓ Seeding complete: 1 user, ${summary.itemTypes} item types, ${summary.collections} collections, ${summary.items} items.`
+      `\n✓ Seeding complete: 1 user, ${summary.itemTypes} item types, ${summary.collections} collections, ${summary.items} items, ${summary.tags} tags.`
     );
   } finally {
     rl.close();
