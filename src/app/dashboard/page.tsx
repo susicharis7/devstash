@@ -1,7 +1,9 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { FolderHeart, FolderOpen, LayoutGrid, Pin, Star } from "lucide-react";
 
-import { collections, items } from "@/lib/mock-data";
+import { getDashboardStats, getRecentCollections } from "@/lib/db/collections";
+import { items } from "@/lib/mock-data";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { ItemRow } from "@/components/dashboard/ItemRow";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -28,27 +30,27 @@ function SectionHeader({
 
 const byNewest = (a: string, b: string) => b.localeCompare(a);
 
-export default function DashboardPage() {
-  const recentCollections = [...collections]
-    .sort((a, b) => byNewest(a.updatedAt, b.updatedAt))
-    .slice(0, 6);
+export default async function DashboardPage() {
+  await connection();
+
+  const [recentCollections, stats] = await Promise.all([
+    getRecentCollections(),
+    getDashboardStats(),
+  ]);
+
   const pinnedItems = items.filter((item) => item.isPinned);
   const recentItems = [...items]
     .sort((a, b) => byNewest(a.createdAt, b.createdAt))
     .slice(0, 10);
 
-  const stats = [
-    { icon: LayoutGrid, label: "Items", value: items.length },
-    { icon: FolderOpen, label: "Collections", value: collections.length },
-    {
-      icon: Star,
-      label: "Favorite Items",
-      value: items.filter((item) => item.isFavorite).length,
-    },
+  const statCards = [
+    { icon: LayoutGrid, label: "Items", value: stats.items },
+    { icon: FolderOpen, label: "Collections", value: stats.collections },
+    { icon: Star, label: "Favorite Items", value: stats.favoriteItems },
     {
       icon: FolderHeart,
       label: "Favorite Collections",
-      value: collections.filter((collection) => collection.isFavorite).length,
+      value: stats.favoriteCollections,
     },
   ];
 
@@ -62,7 +64,7 @@ export default function DashboardPage() {
       </header>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <StatCard
             key={stat.label}
             icon={stat.icon}

@@ -1,18 +1,15 @@
 import Link from "next/link";
 import { Star } from "lucide-react";
 
-import { itemTypesById, type Collection } from "@/lib/mock-data";
+import type { DashboardCollection } from "@/lib/db/collections";
 import { getItemTypeIcon } from "@/lib/item-type-icons";
 
-export function CollectionCard({ collection }: { collection: Collection }) {
-  const dominantType = itemTypesById[collection.itemTypeIds[0]];
-  const accent = dominantType?.color ?? "#6b7280";
-
+export function CollectionCard({ collection }: { collection: DashboardCollection }) {
   return (
     <Link
       href={`/collections/${collection.id}`}
       className="flex flex-col rounded-xl border border-l-4 bg-card p-5 transition-colors hover:bg-muted/40"
-      style={{ borderLeftColor: accent }}
+      style={{ borderLeftColor: collection.accentColor }}
     >
       <div className="flex items-center gap-2">
         <h3 className="min-w-0 flex-1 truncate font-semibold">
@@ -29,11 +26,11 @@ export function CollectionCard({ collection }: { collection: Collection }) {
         {collection.description}
       </p>
       <div className="mt-4 flex items-center gap-2">
-        {collection.itemTypeIds.map((id) => {
-          const type = itemTypesById[id];
-          if (!type) return null;
+        {collection.types.map((type) => {
           const Icon = getItemTypeIcon(type.icon);
-          return <Icon key={id} className="size-4" style={{ color: type.color }} />;
+          return (
+            <Icon key={type.icon} className="size-4" style={{ color: type.color }} />
+          );
         })}
       </div>
     </Link>
