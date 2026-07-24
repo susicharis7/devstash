@@ -1,0 +1,10 @@
+{
+  "_init": {
+    "features": [
+      "database",
+      "auth"
+    ]
+  },
+  "orgId": "org-rapid-firefly-28291557",
+  "projectId": "fancy-water-02995429"
+}
