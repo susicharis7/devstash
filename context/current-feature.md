@@ -1,8 +1,8 @@
 # Current Feature
 
-Seed data — a `prisma/seed.ts` script that populates the database with sample
-data for development and demos, with interactive confirmation.
-See `@context/features/05-seed-spec.md`.
+Dashboard collections from the database — replace the dummy collection data in the
+dashboard main area with real data fetched from Neon via Prisma.
+See `@context/features/06-dashboard-collections-spec.md`.
 
 ## Status
 
@@ -10,28 +10,29 @@ Completed
 
 ## Goals
 
-- Create `prisma/seed.ts` and a way to run it (`npm run db:seed`)
-- Interactive confirmation: prompt `y` to continue / `n` to abort
-- If the DB already has data (re-run / override), require **3** confirmations
-  before wiping and re-seeding
-- Seed a demo user (`demo@devstash.io`, "Demo User", password `12345678` hashed
-  with **bcryptjs**, 12 rounds, `isPro: false`, `emailVerified` = now)
-- Seed the 7 system item types (snippet, prompt, command, note, file, image,
-  link) with the spec's icons/colors, `isSystem: true`
-- Seed 5 collections with items: React Patterns (3 snippets), AI Workflows
-  (3 prompts), DevOps (1 snippet + 1 command + 2 links), Terminal Commands
-  (4 commands), Design Resources (4 links). Links use real URLs.
+- Create `src/lib/db/collections.ts` with data-fetching function(s) (Prisma)
+- Fetch collections directly in the dashboard server component (no client fetch)
+- Replace the mock-data collections in the main area with the 6 recent collections
+  from the database — keep the exact current design/layout
+- Derive each collection card's border color from the **most-used content type**
+  in that collection
+- Show small icons for all content types present in the collection
+- Update the collection stats display to reflect real data
 
 ## Notes
 
-- **Schema change required:** the `User` model currently has no `password` field,
-  but the demo user needs one. Add `password String?` to `User` and create a new
-  migration (`add_user_password`) before seeding.
-- New dependency: `bcryptjs` for password hashing (pure JS, no native build).
-- Env/branch: the seed loads env via `@next/env` like `scripts/test-db.ts`, so it
-  targets the **development** branch by default (`NODE_ENV=production` would target
-  prod). It reads `DATABASE_URL` (pooled) through the pg adapter.
-- Run via `npm run db:seed` (uses `tsx`); prompts require a real terminal (TTY).
+- **Scope:** collections only. Do **not** render the items underneath the cards yet
+  — that comes in a later feature.
+- Keep the existing `CollectionCard` design; reference
+  `@context/screenshots/dashboard-ui-main.png` if needed.
+- Data source shifts from `@src/lib/mock-data.ts` to the DB. The dashboard page is
+  a server component, so it can call the Prisma fetch function directly.
+- Border color currently comes from the first `itemTypeId`; this changes it to the
+  most-used type, which requires aggregating item content types per collection.
+- Seeded data is available (`npm run db:seed`) for the development branch.
+- **Decisions:** show the 6 most recent collections ordered by `updatedAt`
+  (matches current behavior); scope to the seeded demo user
+  (`demo@devstash.io`) for now, and swap to the session user once NextAuth lands.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -82,3 +83,12 @@ Completed
   the development branch by default. Added a `password String?` field to `User`
   (migration `add_user_password`) and the `bcryptjs` dependency. Merged to `main`
   via `feature/seed-data`.
+- **2026-07-24 — Dashboard collections from the database.** Added
+  `src/lib/db/collections.ts` (`getRecentCollections`, `getDashboardStats`) and
+  switched the dashboard main area to fetch the 6 most recent collections and the
+  stat cards from Neon via Prisma (demo user, ordered by `updatedAt`). Card border
+  color now derives from the most-used content type, with icons for all types
+  present. `CollectionCard` takes a DB view model; the page is an async server
+  component using `connection()` to render at request time (so `next build` never
+  touches the DB). Pinned/Recent items and the sidebar still use mock data
+  (deferred). Merged to `main` via `feature/dashboard-collections-db`.
