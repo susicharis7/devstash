@@ -3,9 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Collapsible } from "radix-ui";
-import { ChevronDown, Folder, Layers, Settings, Star } from "lucide-react";
+import {
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  Layers,
+  Settings,
+  Star,
+} from "lucide-react";
 
-import { collections, currentUser, itemTypes } from "@/lib/mock-data";
+import { currentUser } from "@/lib/mock-data";
+import type { SidebarCollections } from "@/lib/db/collections";
+import type { SidebarItemType } from "@/lib/db/items";
 import { getItemTypeIcon } from "@/lib/item-type-icons";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -84,12 +93,16 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function SidebarContent() {
+export function SidebarContent({
+  itemTypes,
+  collections,
+}: {
+  itemTypes: SidebarItemType[];
+  collections: SidebarCollections;
+}) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const closeMobile = () => setOpenMobile(false);
-  const favoriteCollections = collections.filter((c) => c.isFavorite);
-  const otherCollections = collections.filter((c) => !c.isFavorite);
 
   return (
     <div className="flex h-full flex-col bg-sidebar">
@@ -127,26 +140,30 @@ export function SidebarContent() {
           <Separator />
 
           <CollapsibleSection label="Collections">
-            <GroupLabel>Favorites</GroupLabel>
-            {favoriteCollections.map((collection) => {
-              const href = `/collections/${collection.id}`;
-              return (
-                <NavLink
-                  key={collection.id}
-                  href={href}
-                  active={pathname === href}
-                  onNavigate={closeMobile}
-                  icon={<Folder className="size-4 text-muted-foreground" />}
-                  label={collection.name}
-                  trailing={
-                    <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
-                  }
-                />
-              );
-            })}
+            {collections.favorites.length > 0 ? (
+              <>
+                <GroupLabel>Favorites</GroupLabel>
+                {collections.favorites.map((collection) => {
+                  const href = `/collections/${collection.id}`;
+                  return (
+                    <NavLink
+                      key={collection.id}
+                      href={href}
+                      active={pathname === href}
+                      onNavigate={closeMobile}
+                      icon={<Folder className="size-4 text-muted-foreground" />}
+                      label={collection.name}
+                      trailing={
+                        <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
+                      }
+                    />
+                  );
+                })}
+              </>
+            ) : null}
 
-            <GroupLabel>All Collections</GroupLabel>
-            {otherCollections.map((collection) => {
+            <GroupLabel>Recents</GroupLabel>
+            {collections.recents.map((collection) => {
               const href = `/collections/${collection.id}`;
               return (
                 <NavLink
@@ -154,7 +171,14 @@ export function SidebarContent() {
                   href={href}
                   active={pathname === href}
                   onNavigate={closeMobile}
-                  icon={<Folder className="size-4 text-muted-foreground" />}
+                  icon={
+                    <span className="flex size-4 items-center justify-center">
+                      <span
+                        className="size-2.5 rounded-full"
+                        style={{ backgroundColor: collection.accentColor }}
+                      />
+                    </span>
+                  }
                   label={collection.name}
                   trailing={
                     <span className="text-xs text-muted-foreground">
@@ -164,6 +188,15 @@ export function SidebarContent() {
                 />
               );
             })}
+
+            <Link
+              href="/collections"
+              onClick={closeMobile}
+              className="mt-1 flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+            >
+              <FolderOpen className="size-4" />
+              <span>View all collections</span>
+            </Link>
           </CollapsibleSection>
         </nav>
       </ScrollArea>

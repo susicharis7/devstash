@@ -71,3 +71,56 @@ export async function getRecentItems(limit = 10): Promise<DashboardItem[]> {
   });
   return items.map(toDashboardItem);
 }
+
+export interface SidebarItemType {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string;
+  color: string;
+  count: number;
+}
+
+const SYSTEM_TYPE_ORDER = [
+  "snippet",
+  "prompt",
+  "command",
+  "note",
+  "file",
+  "image",
+  "link",
+];
+
+export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
+  const [types, grouped] = await Promise.all([
+    prisma.itemType.findMany({
+      where: { isSystem: true },
+      select: { id: true, name: true, icon: true, color: true },
+    }),
+    prisma.item.groupBy({
+      by: ["itemTypeId"],
+      where: { user: { email: DEMO_USER_EMAIL } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const countByType = new Map(
+    grouped.map((group) => [group.itemTypeId, group._count._all])
+  );
+
+  const orderIndex = (name: string) => {
+    const index = SYSTEM_TYPE_ORDER.indexOf(name);
+    return index === -1 ? SYSTEM_TYPE_ORDER.length : index;
+  };
+
+  return types
+    .sort((a, b) => orderIndex(a.name) - orderIndex(b.name))
+    .map((type) => ({
+    id: type.id,
+    name: `${type.name[0].toUpperCase()}${type.name.slice(1)}s`,
+    slug: `${type.name}s`,
+    icon: type.icon,
+    color: type.color,
+    count: countByType.get(type.id) ?? 0,
+  }));
+}

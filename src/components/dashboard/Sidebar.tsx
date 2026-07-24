@@ -1,6 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import type { SidebarCollections } from "@/lib/db/collections";
+import type { SidebarItemType } from "@/lib/db/items";
 import {
   Sheet,
   SheetContent,
@@ -11,7 +13,13 @@ import {
 import { SidebarContent } from "@/components/dashboard/SidebarContent";
 import { useSidebar } from "@/components/dashboard/sidebar-context";
 
-export function Sidebar() {
+export function Sidebar({
+  itemTypes,
+  collections,
+}: {
+  itemTypes: SidebarItemType[];
+  collections: SidebarCollections;
+}) {
   const { open, openMobile, setOpenMobile } = useSidebar();
 
   return (
@@ -23,7 +31,7 @@ export function Sidebar() {
         )}
       >
         <div className="h-full w-64">
-          <SidebarContent />
+          <SidebarContent itemTypes={itemTypes} collections={collections} />
         </div>
       </aside>
 
@@ -39,7 +47,7 @@ export function Sidebar() {
               Browse item types and collections.
             </SheetDescription>
           </SheetHeader>
-          <SidebarContent />
+          <SidebarContent itemTypes={itemTypes} collections={collections} />
         </SheetContent>
       </Sheet>
     </>

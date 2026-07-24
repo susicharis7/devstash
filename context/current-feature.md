@@ -1,8 +1,8 @@
 # Current Feature
 
-Dashboard items from the database — replace the dummy Pinned and Recent item data
-in the dashboard main area with real data fetched from Neon via Prisma.
-See `@context/features/07-dashboard-items-spec.md`.
+Stats & sidebar from the database — make the sidebar (the last `@src/lib/mock-data.ts`
+consumer) DB-backed: item types with real counts and real collection data. Confirm
+the main-area stats reflect DB data. See `@context/features/08-stats-sidebar-spec.md`.
 
 ## Status
 
@@ -10,30 +10,34 @@ Completed
 
 ## Goals
 
-- Create `src/lib/db/items.ts` with data-fetching functions (pinned + recent)
-- Fetch items directly in the dashboard server component (no client fetch)
-- Replace the mock-data Pinned and Recent items with real DB items — keep the
-  current `ItemRow` design
-- Item card icon/border color derived from the item's type
-- Display item type tags and everything currently shown (title, pin/favorite
-  markers, description, tags, date)
-- If there are no pinned items, do not render the Pinned section at all
-- Ensure the stats display reflects real data (already DB-backed from feature 06)
+- Add sidebar data-fetching functions:
+  - Item types with per-type item counts (in `src/lib/db/items.ts`)
+  - Sidebar collections split into favorites + recents, each with a dominant-type
+    accent color (in `src/lib/db/collections.ts`, mirroring `getRecentCollections`)
+- Fetch the data in a server component and pass it into the sidebar as props
+  (`SidebarContent` is a `"use client"` component — it can't query Prisma itself)
+- Sidebar Types section: list the system item types with their icons/colors,
+  each linking to `/items/[typename]` (slug), with the real count as trailing text
+- Sidebar Collections: keep the ⭐ star for favorite collections; for recents,
+  show a colored circle based on the most-used item type in that collection
+- Add a "View all collections" link under the collections list, going to `/collections`
+- Keep the current sidebar design/layout
+- Confirm the main-area stats cards reflect real DB data (already DB-backed via
+  `getDashboardStats` from feature 06 — no change expected, just verify)
 
 ## Notes
 
-- **Scope:** items only. After this, the whole dashboard main area is DB-backed;
-  only the sidebar still uses `@src/lib/mock-data.ts` (a later feature).
-- Follows the same pattern as `src/lib/db/collections.ts`: scope to the seeded
-  demo user (`demo@devstash.io`); the page already uses `connection()` for
-  request-time rendering, so `next build` won't touch the DB.
-- Keep the existing `ItemRow` design; reference
-  `@context/screenshots/dashboard-ui-main.png` if needed.
-- **Seed-data caveat:** the current seed marks no items as pinned or favorite and
-  adds no tags. So after this change the Pinned section will be hidden (0 pinned),
-  Recent will show the 10 newest items, and no tag chips will render. Consider
-  updating the seed to flag a few pinned/favorite items and add tags for a richer
-  demo (out of scope here — flag to the user).
+- **Scope:** the sidebar. After this, the entire dashboard is DB-backed and
+  `@src/lib/mock-data.ts` has no remaining consumers (candidate for removal).
+- `src/lib/db/items.ts` already exists (feature 07); despite the spec saying to
+  "create" it, we add the item-types function to it rather than recreating it.
+- Follow the `src/lib/db/collections.ts` pattern: scope to the seeded demo user
+  (`demo@devstash.io`); use `connection()` for request-time rendering so
+  `next build` never touches the DB.
+- `getRecentCollections` already computes a dominant-type `accentColor` — reuse
+  that logic for the sidebar recents' colored circle.
+- `/items/[typename]` and `/collections` routes may not exist yet — the links can
+  point at them regardless; building those pages is out of scope here.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -102,3 +106,15 @@ Completed
   two collections (also clears tags on override). The dashboard main area is now
   fully DB-backed; only the sidebar still uses mock data. Merged to `main` via
   `feature/dashboard-items`.
+- **2026-07-24 — Stats & sidebar from the database.** Made the sidebar DB-backed:
+  added `getSidebarItemTypes` (system types, per-type counts scoped to the demo
+  user, canonical order, display label + plural slug) to `src/lib/db/items.ts` and
+  `getSidebarCollections` (favorites + recents, each with a dominant-type accent
+  color) to `src/lib/db/collections.ts`, extracting a shared `rankCollectionTypes`
+  helper. The dashboard layout is now an async server component (`connection()`)
+  that fetches both datasets and passes them through `Sidebar` to the client
+  `SidebarContent`. Sidebar Types link to `/items/[slug]` with real counts;
+  favorite collections keep the star and recents show a colored circle by dominant
+  type; added a "View all collections" link to `/collections`. Only `currentUser`
+  still comes from mock data (auth is a later feature). Merged to `main` via
+  `feature/stats-sidebar-db`.
