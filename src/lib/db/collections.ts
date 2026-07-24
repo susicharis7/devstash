@@ -25,6 +25,54 @@ export interface DashboardStats {
   favoriteCollections: number;
 }
 
+export interface SidebarCollection {
+  id: string;
+  name: string;
+  itemCount: number;
+  accentColor: string;
+}
+
+export interface SidebarCollections {
+  favorites: SidebarCollection[];
+  recents: SidebarCollection[];
+}
+
+const collectionTypeInclude = {
+  items: {
+    select: {
+      item: {
+        select: {
+          itemType: { select: { icon: true, color: true, name: true } },
+        },
+      },
+    },
+  },
+} as const;
+
+type CollectionTypeItem = {
+  item: { itemType: { icon: string; color: string; name: string } };
+};
+
+function rankCollectionTypes(items: CollectionTypeItem[]) {
+  const counts = new Map<
+    string,
+    { icon: string; color: string; count: number }
+  >();
+  for (const { item } of items) {
+    const type = item.itemType;
+    const existing = counts.get(type.name);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      counts.set(type.name, { icon: type.icon, color: type.color, count: 1 });
+    }
+  }
+
+  return [...counts.values()].sort(
+    (a, b) => b.count - a.count || a.icon.localeCompare(b.icon)
+  );
+}
+
 export async function getRecentCollections(
   limit = 6
 ): Promise<DashboardCollection[]> {
@@ -32,37 +80,11 @@ export async function getRecentCollections(
     where: { user: { email: DEMO_USER_EMAIL } },
     orderBy: { updatedAt: "desc" },
     take: limit,
-    include: {
-      items: {
-        select: {
-          item: {
-            select: {
-              itemType: { select: { icon: true, color: true, name: true } },
-            },
-          },
-        },
-      },
-    },
+    include: collectionTypeInclude,
   });
 
   return collections.map((collection) => {
-    const counts = new Map<
-      string,
-      { icon: string; color: string; count: number }
-    >();
-    for (const { item } of collection.items) {
-      const type = item.itemType;
-      const existing = counts.get(type.name);
-      if (existing) {
-        existing.count += 1;
-      } else {
-        counts.set(type.name, { icon: type.icon, color: type.color, count: 1 });
-      }
-    }
-
-    const ranked = [...counts.values()].sort(
-      (a, b) => b.count - a.count || a.icon.localeCompare(b.icon)
-    );
+    const ranked = rankCollectionTypes(collection.items);
 
     return {
       id: collection.id,
@@ -74,6 +96,35 @@ export async function getRecentCollections(
       types: ranked.map(({ icon, color }) => ({ icon, color })),
     };
   });
+}
+
+export async function getSidebarCollections(
+  recentLimit = 6
+): Promise<SidebarCollections> {
+  const collections = await prisma.collection.findMany({
+    where: { user: { email: DEMO_USER_EMAIL } },
+    orderBy: { updatedAt: "desc" },
+    include: collectionTypeInclude,
+  });
+
+  const toSidebarCollection = (
+    collection: (typeof collections)[number]
+  ): SidebarCollection => ({
+    id: collection.id,
+    name: collection.name,
+    itemCount: collection.items.length,
+    accentColor: rankCollectionTypes(collection.items)[0]?.color ?? FALLBACK_COLOR,
+  });
+
+  return {
+    favorites: collections
+      .filter((collection) => collection.isFavorite)
+      .map(toSidebarCollection),
+    recents: collections
+      .filter((collection) => !collection.isFavorite)
+      .slice(0, recentLimit)
+      .map(toSidebarCollection),
+  };
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
