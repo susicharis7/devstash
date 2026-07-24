@@ -1,8 +1,8 @@
 # Current Feature
 
-Prisma + Neon PostgreSQL setup — wire Prisma ORM to the Neon database and create
-the initial schema.
-See `@context/features/04-database-spec.md`.
+Seed data — a `prisma/seed.ts` script that populates the database with sample
+data for development and demos, with interactive confirmation.
+See `@context/features/05-seed-spec.md`.
 
 ## Status
 
@@ -10,29 +10,28 @@ Completed
 
 ## Goals
 
-- Set up Prisma ORM against Neon PostgreSQL (serverless)
-- Create the initial schema from the data models in `@context/project-overview.md`
-  (expected to evolve)
-- Include NextAuth models (`Account`, `Session`, `VerificationToken`)
-- Add appropriate indexes and cascade deletes
-- Create and run the first migration (never `db push`)
+- Create `prisma/seed.ts` and a way to run it (`npm run db:seed`)
+- Interactive confirmation: prompt `y` to continue / `n` to abort
+- If the DB already has data (re-run / override), require **3** confirmations
+  before wiping and re-seeding
+- Seed a demo user (`demo@devstash.io`, "Demo User", password `12345678` hashed
+  with **bcryptjs**, 12 rounds, `isPro: false`, `emailVerified` = now)
+- Seed the 7 system item types (snippet, prompt, command, note, file, image,
+  link) with the spec's icons/colors, `isSystem: true`
+- Seed 5 collections with items: React Patterns (3 snippets), AI Workflows
+  (3 prompts), DevOps (1 snippet + 1 command + 2 links), Terminal Commands
+  (4 commands), Design Resources (4 links). Links use real URLs.
 
 ## Notes
 
-- **Prisma 7** — has breaking changes vs. earlier versions. Read the full upgrade
-  guide before writing code:
-  https://www.prisma.io/docs/orm/more/upgrade-guides/upgrading-versions/upgrading-to-prisma-7
-  Setup reference:
-  https://www.prisma.io/docs/getting-started/prisma-orm/quickstart/prisma-postgres
-- **Migrations only** — always create migrations, never push directly unless
-  explicitly specified.
-- **Neon branches are already wired** (done in a prior session): `.env.development.local`
-  points `DATABASE_URL` at the Neon `development` branch and `.env.production.local`
-  at `production`; Next.js loads the right one per command. Prisma `datasource`
-  should use `DATABASE_URL` (pooled) plus `directUrl = DATABASE_URL_UNPOOLED`
-  (direct connection) for migrations.
-- Schema is an initial draft and will evolve; the `ContentType` enum question
-  (`TEXT | URL | FILE`) noted in `project-overview.md` should be confirmed.
+- **Schema change required:** the `User` model currently has no `password` field,
+  but the demo user needs one. Add `password String?` to `User` and create a new
+  migration (`add_user_password`) before seeding.
+- New dependency: `bcryptjs` for password hashing (pure JS, no native build).
+- Env/branch: the seed loads env via `@next/env` like `scripts/test-db.ts`, so it
+  targets the **development** branch by default (`NODE_ENV=production` would target
+  prod). It reads `DATABASE_URL` (pooled) through the pg adapter.
+- Run via `npm run db:seed` (uses `tsx`); prompts require a real terminal (TTY).
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -76,3 +75,10 @@ Completed
   `VerificationToken`), with indexes and cascade deletes, and applied the `init`
   migration to the dev branch. Client singleton at `@/lib/prisma`. Merged to `main`
   via `feature/prisma-neon-setup`.
+- **2026-07-24 — Seed data.** Added `prisma/seed.ts` (`npm run db:seed`) that
+  populates the database with a demo user (`demo@devstash.io`, bcryptjs 12-round
+  hash), the 7 system item types, and 5 collections with 18 items. Prompts `y`/`n`
+  to start and requires 3 confirmations before overriding existing data; targets
+  the development branch by default. Added a `password String?` field to `User`
+  (migration `add_user_password`) and the `bcryptjs` dependency. Merged to `main`
+  via `feature/seed-data`.
