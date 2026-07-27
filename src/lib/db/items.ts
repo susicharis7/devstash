@@ -79,6 +79,7 @@ export interface SidebarItemType {
   icon: string;
   color: string;
   count: number;
+  isPro: boolean;
 }
 
 const SYSTEM_TYPE_ORDER = [
@@ -90,6 +91,8 @@ const SYSTEM_TYPE_ORDER = [
   "image",
   "link",
 ];
+
+const PRO_TYPE_NAMES = new Set(["file", "image"]);
 
 export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
   const [types, grouped] = await Promise.all([
@@ -122,5 +125,6 @@ export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
     icon: type.icon,
     color: type.color,
     count: countByType.get(type.id) ?? 0,
+    isPro: PRO_TYPE_NAMES.has(type.name),
   }));
 }

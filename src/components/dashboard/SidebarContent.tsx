@@ -18,6 +18,7 @@ import type { SidebarItemType } from "@/lib/db/items";
 import { getItemTypeIcon } from "@/lib/item-type-icons";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -85,6 +86,17 @@ function NavLink({
   );
 }
 
+function ProBadge() {
+  return (
+    <Badge
+      variant="outline"
+      className="h-4 border-pro/30 bg-pro/10 px-1.5 text-[0.6rem] font-semibold tracking-wider text-pro motion-safe:animate-pro-glow"
+    >
+      PRO
+    </Badge>
+  );
+}
+
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="px-2 pt-3 pb-1 text-[0.65rem] font-semibold tracking-wider text-muted-foreground/70 uppercase">
@@ -128,9 +140,13 @@ export function SidebarContent({
                   icon={<Icon className="size-4" style={{ color: type.color }} />}
                   label={type.name}
                   trailing={
-                    <span className="text-xs text-muted-foreground">
-                      {type.count}
-                    </span>
+                    type.isPro ? (
+                      <ProBadge />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {type.count}
+                      </span>
+                    )
                   }
                 />
               );

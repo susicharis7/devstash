@@ -1,43 +1,42 @@
-# Current Feature
+# Current Feature: Add PRO Badge to Sidebar
 
-Stats & sidebar from the database — make the sidebar (the last `@src/lib/mock-data.ts`
-consumer) DB-backed: item types with real counts and real collection data. Confirm
-the main-area stats reflect DB data. See `@context/features/08-stats-sidebar-spec.md`.
+Mark the Pro-only item types (`file`, `image`) in the sidebar Types list with a
+clean, subtle, uppercase **PRO** badge that has a soft glow animation.
+See `@context/features/09-add-pro-badge-sidebar.md`.
 
 ## Status
 
-Completed
+In Progress
 
 ## Goals
 
-- Add sidebar data-fetching functions:
-  - Item types with per-type item counts (in `src/lib/db/items.ts`)
-  - Sidebar collections split into favorites + recents, each with a dominant-type
-    accent color (in `src/lib/db/collections.ts`, mirroring `getRecentCollections`)
-- Fetch the data in a server component and pass it into the sidebar as props
-  (`SidebarContent` is a `"use client"` component — it can't query Prisma itself)
-- Sidebar Types section: list the system item types with their icons/colors,
-  each linking to `/items/[typename]` (slug), with the real count as trailing text
-- Sidebar Collections: keep the ⭐ star for favorite collections; for recents,
-  show a colored circle based on the most-used item type in that collection
-- Add a "View all collections" link under the collections list, going to `/collections`
-- Keep the current sidebar design/layout
-- Confirm the main-area stats cards reflect real DB data (already DB-backed via
-  `getDashboardStats` from feature 06 — no change expected, just verify)
+- Install the ShadCN `badge` component and use it for the PRO marker
+- Flag Pro-only types in the sidebar data: add `isPro` to `SidebarItemType`
+  (`src/lib/db/items.ts`), true for the `file` and `image` system types
+- Render the badge as the `trailing` slot for Pro types in `SidebarContent`'s
+  Types section, replacing the count for those rows
+- Badge styling: uppercase `PRO`, small/subtle, tinted to the app accent, readable
+  in dark mode (primary target) and light mode
+- Add a subtle glow animation to the badge via `@keyframes` in
+  `src/app/globals.css` (Tailwind v4 CSS config — no `tailwind.config.*`)
+- Keep the existing sidebar layout, spacing, and row alignment unchanged
+- `npm run build` passes with no new lint errors
 
 ## Notes
 
-- **Scope:** the sidebar. After this, the entire dashboard is DB-backed and
-  `@src/lib/mock-data.ts` has no remaining consumers (candidate for removal).
-- `src/lib/db/items.ts` already exists (feature 07); despite the spec saying to
-  "create" it, we add the item-types function to it rather than recreating it.
-- Follow the `src/lib/db/collections.ts` pattern: scope to the seeded demo user
-  (`demo@devstash.io`); use `connection()` for request-time rendering so
-  `next build` never touches the DB.
-- `getRecentCollections` already computes a dominant-type `accentColor` — reuse
-  that logic for the sidebar recents' colored circle.
-- `/items/[typename]` and `/collections` routes may not exist yet — the links can
-  point at them regardless; building those pages is out of scope here.
+- Pro-only types come from `project-overview.md`: `file` and `image` are Pro; the
+  other five system types are Free.
+- `SidebarContent.tsx` is the only consumer of `SidebarItemType`; it's a
+  `"use client"` component fed props from `src/app/dashboard/layout.tsx`.
+- The raw DB `ItemType.name` is singular (`file`, `image`) while the view model
+  exposes `name: "Files"` / `slug: "files"` — derive `isPro` from the raw name
+  before that transform.
+- Gating is display-only: during development all users can access everything, so
+  the badge must not disable the link or change navigation.
+- Tailwind v4: theme/animation config lives in `@theme` / plain CSS in
+  `globals.css`. Do not create a `tailwind.config.ts`.
+- Respect `prefers-reduced-motion` for the glow animation.
+- No comments in code, per `coding-standards.md`.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
