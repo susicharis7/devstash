@@ -1,42 +1,18 @@
-# Current Feature: Add PRO Badge to Sidebar
+# Current Feature
 
-Mark the Pro-only item types (`file`, `image`) in the sidebar Types list with a
-clean, subtle, uppercase **PRO** badge that has a soft glow animation.
-See `@context/features/09-add-pro-badge-sidebar.md`.
+<!-- Load a spec with /feature load to populate this file. -->
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Install the ShadCN `badge` component and use it for the PRO marker
-- Flag Pro-only types in the sidebar data: add `isPro` to `SidebarItemType`
-  (`src/lib/db/items.ts`), true for the `file` and `image` system types
-- Render the badge as the `trailing` slot for Pro types in `SidebarContent`'s
-  Types section, replacing the count for those rows
-- Badge styling: uppercase `PRO`, small/subtle, tinted to the app accent, readable
-  in dark mode (primary target) and light mode
-- Add a subtle glow animation to the badge via `@keyframes` in
-  `src/app/globals.css` (Tailwind v4 CSS config — no `tailwind.config.*`)
-- Keep the existing sidebar layout, spacing, and row alignment unchanged
-- `npm run build` passes with no new lint errors
+<!-- Bullet points of what success looks like. -->
 
 ## Notes
 
-- Pro-only types come from `project-overview.md`: `file` and `image` are Pro; the
-  other five system types are Free.
-- `SidebarContent.tsx` is the only consumer of `SidebarItemType`; it's a
-  `"use client"` component fed props from `src/app/dashboard/layout.tsx`.
-- The raw DB `ItemType.name` is singular (`file`, `image`) while the view model
-  exposes `name: "Files"` / `slug: "files"` — derive `isPro` from the raw name
-  before that transform.
-- Gating is display-only: during development all users can access everything, so
-  the badge must not disable the link or change navigation.
-- Tailwind v4: theme/animation config lives in `@theme` / plain CSS in
-  `globals.css`. Do not create a `tailwind.config.ts`.
-- Respect `prefers-reduced-motion` for the glow animation.
-- No comments in code, per `coding-standards.md`.
+<!-- Additional context, constraints, or details from the spec. -->
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -117,3 +93,15 @@ In Progress
   type; added a "View all collections" link to `/collections`. Only `currentUser`
   still comes from mock data (auth is a later feature). Merged to `main` via
   `feature/stats-sidebar-db`.
+- **2026-07-27 — PRO badge in the sidebar.** Marked the Pro-only system types
+  (`file`, `image`) in the sidebar Types list with a small uppercase PRO pill.
+  Added `isPro` to `SidebarItemType` in `src/lib/db/items.ts` (derived from a
+  `PRO_TYPE_NAMES` set against the raw singular type name, before pluralization)
+  and installed the ShadCN `badge` component. A local `ProBadge` in
+  `SidebarContent.tsx` renders in the row's `trailing` slot in place of the item
+  count. Added `--pro` / `--pro-glow` theme tokens per light/dark mode plus
+  `--color-pro`, `--animate-pro-glow` and `@keyframes pro-glow` (soft pulsing
+  box-shadow) to `globals.css`, applied via `motion-safe:animate-pro-glow` so
+  reduced-motion users get a static badge. Gating is display-only — the links
+  stay navigable since all types are accessible during development. Merged to
+  `main` via `feature/pro-badge-sidebar`.
