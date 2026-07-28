@@ -12,9 +12,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description =
+  "One searchable hub for the snippets, commands, prompts, notes and links you keep losing. Save it once, find it in seconds.";
+
 export const metadata: Metadata = {
-  title: "DevStash",
-  description: "DevStash application",
+  title: {
+    default: "DevStash — Everything you saved, one search away",
+    template: "%s · DevStash",
+  },
+  description,
+  applicationName: "DevStash",
+  openGraph: {
+    type: "website",
+    siteName: "DevStash",
+    title: "DevStash — Everything you saved, one search away",
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DevStash — Everything you saved, one search away",
+    description,
+  },
 };
 
 export default function RootLayout({
