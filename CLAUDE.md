@@ -23,6 +23,26 @@ This project uses **Next.js 16.2.10** and **React 19.2.4**. These are newer than
 
 The git repository and the actual application both live in `devstash/`, one level below the working-directory root `udemy-project/`. Run all commands from `devstash/`.
 
+## ⚠️ Neon MCP
+
+The Neon MCP server operates on the **`development` branch only**.
+
+- Project: `devstash` (`fancy-water-02995429`)
+- Development branch: `br-divine-cell-as1m3s7o` — **always pass this as `branchId`**
+- Production branch: `br-sparkling-shadow-as97phil` — **never touch it**
+
+Rules:
+
+- Always pass `branchId: br-divine-cell-as1m3s7o` explicitly. `production` is the
+  project's *default* branch, so omitting `branchId` silently targets production.
+- Never read from, write to, or describe the production branch unless I explicitly
+  ask for it in that message. Prior permission does not carry over.
+- Never run destructive SQL (`DROP`, `DELETE`, `TRUNCATE`, `UPDATE`/`INSERT` without
+  a `WHERE`), and never delete or reset a branch, without asking first.
+- Schema changes go through Prisma migrations only (`npm run db:migrate`). Do not use
+  the MCP migration tools (`prepare_database_migration` /
+  `complete_database_migration`) — they apply DDL outside Prisma's migration history.
+
 ## Commands
 
 ```bash
