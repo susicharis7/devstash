@@ -1,6 +1,8 @@
 # Current Feature
 
-Code review follow-up: user-scoped queries + sidebar/card dedupe
+Auth phase 1: NextAuth v5 + GitHub provider
+
+Spec: `context/features/10-auth-phase-1-spec.md`
 
 ## Status
 
@@ -8,23 +10,36 @@ Completed
 
 ## Goals
 
-- Dashboard and sidebar queries filter on the indexed `userId` column instead of
-  traversing the `User` relation by email, so the six per-request queries stop
-  joining `User`.
-- The demo-user indirection lives behind a single request-memoized
-  `getCurrentUserId()`, so swapping in a real NextAuth session later touches one file.
-- The favorite star renders from one shared component instead of three copies of
-  `fill-yellow-400 text-yellow-400`.
-- The sidebar's favorites and recents loops share one collection nav-link
-  component instead of duplicating href/active/`NavLink` construction.
+- NextAuth v5 (`next-auth@beta`) wired up with `@auth/prisma-adapter` against the
+  existing `Account` / `Session` / `User` models — no schema change needed.
+- Split config so the proxy stays edge-compatible: `src/auth.config.ts` holds
+  providers only, `src/auth.ts` adds the Prisma adapter and `strategy: 'jwt'`.
+- GitHub OAuth as the only provider, using NextAuth's default sign-in page
+  (no custom `pages.signIn` in this phase).
+- `/dashboard/*` protected by `src/proxy.ts` (Next.js 16's renamed middleware);
+  unauthenticated requests redirect to sign-in.
+- `Session.user.id` typed via `src/types/next-auth.d.ts`.
 
 ## Notes
 
-- No behaviour or UI change is intended — same rows, same order, same colors.
-- Findings came from a `code-improver` review pass; the `Tag` model's missing
-  `userId` / `@@unique([userId, name])` was also flagged but is a schema decision
-  requiring a migration, so it is deliberately out of scope here.
-- `prisma/seed.ts` keeps using an email lookup — it runs standalone, not per request.
+- Next.js 16 renamed `middleware.ts` to `proxy.ts`; it must sit at `src/proxy.ts`,
+  the same level as `app/`, and export a named `proxy` (verified against
+  `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`).
+- The Auth.js docs construct `new PrismaClient()` inline; we pass the existing
+  `@/lib/prisma` singleton instead so the `PrismaPg` driver adapter is reused.
+- `@auth/prisma-adapter@2.11.3` peer-accepts `@prisma/client >=6`, so Prisma 7.9.0
+  needs no override.
+- The matcher is scoped to `["/dashboard", "/dashboard/:path*"]` rather than a
+  negative "everything except `_next`" pattern — the Next.js docs warn that a
+  matcher-less proxy also intercepts CSS/JS/images, and an allowlist avoids that
+  outright. Both entries are listed because only `/dashboard/:path*` is documented
+  as zero-or-more, and the bare path is cheap insurance.
+- Out of scope, deliberately: swapping `getCurrentUserId()` from the demo-user
+  email lookup to the real session, sign-out UI, the credentials provider, and a
+  custom sign-in page. Those are later auth phases — this one only proves the
+  GitHub round-trip works.
+- `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` come from a GitHub OAuth app that must be
+  created by hand; env files are gitignored, so they are set locally only.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -193,3 +208,30 @@ Completed
   Verified with `prisma migrate status` against both branches, and with
   `DATABASE_URL_UNPOOLED=` to exercise the warning and the pooled fallback. Merged
   to `main` via `fix/vercel-migrate-timeout`.
+- **2026-07-28 — Auth phase 1: NextAuth v5 + GitHub.** Installed
+  `next-auth@5.0.0-beta.32` and `@auth/prisma-adapter@2.11.3` (peer-accepts
+  `@prisma/client >=6`, so Prisma 7.9.0 needed no override) and added the split
+  config: `src/auth.config.ts` (GitHub provider only, `satisfies NextAuthConfig`)
+  and `src/auth.ts` (Prisma adapter + `session: { strategy: 'jwt' }` + a session
+  callback copying `token.sub` to `session.user.id`). `src/auth.ts` spreads
+  `...authConfig` *first* so its own keys win — phase 2's Credentials override
+  depends on that precedence. Handlers exported from
+  `src/app/api/auth/[...nextauth]/route.ts`; `src/types/next-auth.d.ts` augments
+  `Session["user"]` with `id`. Route protection lives in `src/proxy.ts` — Next.js 16
+  renamed `middleware` to `proxy`, so the file sits beside `app/` and uses a named
+  `proxy` export wrapping `auth()`, redirecting to `/api/auth/signin` with a
+  `callbackUrl`. The matcher is the allowlist `["/dashboard", "/dashboard/:path*"]`
+  rather than a negative `_next`-excluding pattern, since the docs warn a
+  matcher-less proxy also intercepts CSS/JS/images. Used the existing `@/lib/prisma`
+  singleton instead of the docs' inline `new PrismaClient()` so the `PrismaPg`
+  driver adapter is reused. No migration — `Account` / `Session` /
+  `VerificationToken` were already in the schema from the `init` migration.
+  Verified end to end against the development branch: unauthenticated `/dashboard`
+  → 307 to the default sign-in page, GitHub round-trip completes, authenticated
+  `/dashboard` → 200, `/api/auth/session` returns a cuid `user.id`, and the DB went
+  from 1 user / 0 accounts to 2 users / 1 `github` `oauth` account with `Session`
+  still 0 (correct for JWT). Known and deferred: the GitHub sign-in creates a second
+  `User` row while the dashboard still reads the demo user via
+  `getCurrentUserId()`, so a signed-in GitHub user sees demo data — rewiring that,
+  plus sign-out UI and the credentials provider, is phases 2 and 3. Also added
+  `.playwright-mcp/` to `.gitignore`. Merged to `main` via `feature/auth-phase-1`.
