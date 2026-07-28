@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Collapsible } from "radix-ui";
-import { ChevronDown, Folder, FolderOpen, Layers, Settings } from "lucide-react";
+import { ChevronDown, Folder, FolderOpen, Layers } from "lucide-react";
 
-import { currentUser } from "@/lib/mock-data";
 import type {
   SidebarCollection,
   SidebarCollections,
@@ -14,21 +13,12 @@ import type { SidebarItemType } from "@/lib/db/items";
 import { FavoriteStar } from "@/components/dashboard/FavoriteStar";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useSidebar } from "@/components/dashboard/sidebar-context";
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
+import type { AvatarUser } from "@/components/user/UserAvatar";
+import { SidebarUser } from "@/components/user/SidebarUser";
 
 function CollapsibleSection({
   label,
@@ -148,9 +138,11 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 export function SidebarContent({
   itemTypes,
   collections,
+  user,
 }: {
   itemTypes: SidebarItemType[];
   collections: SidebarCollections;
+  user: AvatarUser | null;
 }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
@@ -237,23 +229,7 @@ export function SidebarContent({
         </nav>
       </ScrollArea>
 
-      <div className="flex shrink-0 items-center gap-3 border-t p-3">
-        <Avatar>
-          {currentUser.image ? (
-            <AvatarImage src={currentUser.image} alt={currentUser.name} />
-          ) : null}
-          <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{currentUser.name}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {currentUser.email}
-          </p>
-        </div>
-        <Button variant="ghost" size="icon" aria-label="Settings">
-          <Settings className="size-4" />
-        </Button>
-      </div>
+      {user ? <SidebarUser user={user} /> : null}
     </div>
   );
 }

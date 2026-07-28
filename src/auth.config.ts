@@ -21,4 +21,5 @@ export function authProviders(authorize: CredentialsAuthorize) {
 
 export default {
   providers: authProviders(() => null),
+  pages: { signIn: "/sign-in" },
 } satisfies NextAuthConfig;

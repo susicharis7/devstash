@@ -1,18 +1,75 @@
-# Current Feature
+# Current Feature: Auth UI — Sign In, Register & Sign Out
 
-<!-- Load a spec with /feature load [spec-name] -->
+Auth phase 3: custom auth pages + sidebar user display
+
+Spec: `context/features/12-auth-phase-3-spec.md`
 
 ## Status
 
-Not Started
+Complete
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- A custom `/sign-in` page with email/password fields, a "Sign in with GitHub"
+  button, a link to `/register`, and inline validation + error display — replacing
+  NextAuth's default page.
+- A custom `/register` page posting to the existing `POST /api/auth/register`, with
+  matching-password and email-format validation, redirecting to sign-in on success.
+- The sidebar footer shows the *real* signed-in user: avatar from `image` with an
+  initials fallback, their name, and a dropdown containing "Sign out". The avatar
+  itself links to `/profile`.
+- A reusable avatar component handles the image-or-initials split in one place.
+- The sidebar is fixed to the viewport: it stops growing vertically as page content
+  gets longer, so its user footer stays visible at the bottom of the screen instead
+  of sliding to the bottom of the document.
 
 ## Notes
 
-<!-- Populated by /feature load -->
+- This is the phase that retires the demo user. `getCurrentUserId()` in
+  `src/lib/db/current-user.ts` was built as the single seam for exactly this — it
+  should now read `auth()` instead of looking up `DEMO_USER_EMAIL`. Until it does,
+  a signed-in user still sees the demo account's collections and items.
+- `src/lib/mock-data.ts` currently exports only `currentUser`, consumed by
+  `SidebarContent.tsx:242-251`. Once the sidebar reads the session, that file and its
+  `User` interface become dead and should be deleted, not left behind.
+- `getInitials` already exists locally in `SidebarContent.tsx:24-31`; the spec's
+  reusable avatar component should absorb it rather than duplicate it.
+- Setting `pages.signIn: '/sign-in'` in the auth config is what redirects the proxy
+  to the custom page. `src/proxy.ts` currently hardcodes a redirect to
+  `/api/auth/signin` and must be updated in step with it, or protected routes will
+  keep landing on the default page.
+- `signOut` is already exported from `src/auth.ts`. The sidebar is a client
+  component, so sign-out needs either a Server Action wrapper or
+  `signOut` from `next-auth/react` — the former keeps the client bundle smaller.
+- Sign-in errors arrive as `?error=CredentialsSignin&code=credentials` on the URL.
+  The custom page should read that and show one generic "Invalid email or password"
+  message; per the Auth.js docs, do not distinguish which field was wrong.
+- Registration returns `{ success, data, error }` with the first Zod issue as
+  `error`. A field-level form may want all issues — that would mean returning
+  `error.issues` from the route, a small change to an endpoint that already shipped.
+- The existing ShadCN components cover most of this: `avatar`, `button`, `input`,
+  `separator` are installed. A dropdown for the sign-out menu is not — that needs
+  `npx shadcn@latest add dropdown-menu`.
+- `/profile` does not exist yet. The spec only asks that the avatar link there, so
+  the link will 404 until a later phase builds the page.
+- Why the sidebar currently grows: `src/app/dashboard/layout.tsx:23` wraps the shell
+  in `flex h-full min-h-screen`. `body` is `min-h-full` (auto height), so `h-full`
+  resolves to `auto` and only `min-h-screen` applies — the flex row is free to exceed
+  the viewport, and `<aside>` stretches to match it. `main`'s `overflow-y-auto` never
+  engages because its parent grows instead of clipping, so the document scrolls and
+  the sidebar footer ends up at the bottom of the *page*.
+- The fix belongs in the layout, not in the sidebar: bound the shell to the viewport
+  (`flex h-dvh overflow-hidden`) so `main` becomes the only scroll container.
+  `SidebarContent` is already built for a bounded parent — `flex h-full flex-col`
+  with a `min-h-0 flex-1` `ScrollArea` and a `shrink-0` footer — it just never
+  receives a bounded height today. Prefer `h-dvh` over `h-screen` so mobile browser
+  chrome does not cut off the footer.
+- Keep the collapse animation working: `Sidebar.tsx:29-31` animates `width` between
+  `w-64` and `w-0`, which a flex child supports. Switching to `position: fixed` for
+  the sidebar would break that and force manual content offsets, so bounded-height
+  flex is the better route.
+- The user block lives in the sidebar footer only — confirmed, no top-bar avatar.
+  Testing step 4 in the spec said "top bar" and has been corrected to say sidebar.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
