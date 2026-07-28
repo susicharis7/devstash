@@ -1,73 +1,18 @@
-# Current Feature: Landing Page — Public Home at `/`
+# Current Feature
 
-Spec: `context/features/13-landing-page-spec.md`
+<!-- Load a spec with /feature load [spec-name] -->
 
 ## Status
 
-Complete
+Not Started
 
 ## Goals
 
-- `/` becomes a real public landing page instead of the `<h1>DEVSTASH</h1>` stub: sticky
-  nav, hero, the seven item types, a static product preview, a feature list, a closing
-  CTA, and a footer.
-- Clear paths in: "Sign in" to `/sign-in` and "Create account" to `/register`, in both the
-  nav and the closing CTA.
-- A visitor who already holds a valid session token never sees the page — `/` redirects
-  them to `/dashboard`.
-- `/` stays **statically prerendered**. The build output must still show `○ /`.
-- Animations that serve the subject: one orchestrated hero load, a blinking-caret query
-  cycle as the signature moment, scroll-triggered section reveals, hover lift on cards —
-  with no new dependency and `prefers-reduced-motion` fully respected.
-- Root `metadata` upgraded from "DevStash application" to real public-facing title,
-  description, and Open Graph fields.
+<!-- Populated by /feature load -->
 
 ## Notes
 
-- **The signed-in redirect goes in `src/proxy.ts`, not in the page.** Calling `auth()`
-  inside `src/app/page.tsx` would make `/` dynamic and throw away the static prerender for
-  every anonymous visitor — precisely the audience the page exists for. The proxy runs
-  before the response is served, so anonymous traffic still gets the static page and
-  signed-in traffic never reaches it. The check is cookie-only and costs no database round
-  trip: the session is a JWT and the proxy initializes NextAuth from `auth.config.ts`,
-  which has no adapter.
-- **The proxy's logic has to become path-aware**, because the two cases are opposites.
-  Today it is "no session → `/sign-in`" for every matched path; adding `"/"` to that
-  matcher unchanged would bounce anonymous visitors off the landing page straight to
-  sign-in. It must branch: `/dashboard*` keeps "no session → `/sign-in`" with the
-  `callbackUrl`, while `/` becomes "session → `/dashboard`, otherwise continue". Matcher
-  entry `"/"` matches the root exactly, not every path.
-- **Decided: `/sign-in` and `/register` get the same redirect**, so a signed-in person is
-  never left staring at a sign-in form. All three live in one `SIGNED_OUT_ONLY` set in the
-  proxy. The redirect uses **303** rather than the default 307: a signed-in visitor is
-  almost always arriving by GET, but a stale form submitted from a second tab would be a
-  POST, and 307 preserves the method — 303 converts it to a GET of `/dashboard`, which is
-  what should happen. The auth flows themselves are unaffected because the Server Action
-  POST to `/sign-in` happens while the visitor still has no session, and the OAuth callback
-  lives at `/api/auth/callback/*`, which the matcher does not cover.
-- **Sample content stays local to the landing page**, in something like
-  `src/components/landing/landing-content.ts`. Do not recreate `src/lib/mock-data.ts`,
-  which was deliberately deleted when the app went DB-backed, and do not query the
-  database for marketing copy — keeping it local is what keeps `/` static.
-- **Type colors and icons come from `src/lib/item-types.ts`** via `SYSTEM_ITEM_TYPES` and
-  `ItemTypeIcon`. Never restate a hex value. `ItemTypeIcon` has no `'use client'`, so it
-  works inside a static server component.
-- **Scroll reveals need a call.** `tw-animate-css` is installed but only provides
-  `animate-in` / `animate-out` and a few accordion/caret keyframes — nothing
-  scroll-triggered. Prefer CSS scroll-driven animations (`animation-timeline: view()`)
-  behind an `@supports` guard: no JavaScript, no new dependency, and it degrades to
-  simply-visible. The alternative is a small `'use client'` IntersectionObserver wrapper.
-  If the cycling hero mock needs state, that one component may be `'use client'`; nothing
-  else should be.
-- The page is **dark-only** — `<html>` carries a hardcoded `dark` class in the root layout,
-  so there is no light variant to design here. Fonts are Geist Sans and Geist Mono,
-  already loaded via `next/font`; the mono face suits queries, tags, and code samples.
-- The preview mock should match the real `ItemRow` / `CollectionCard` visual language
-  (type-colored left border, tags, pin marker) so it is honest about what the app looks
-  like.
-- Out of scope: a pricing / Free vs Pro section (Pro gating is display-only today, so it
-  would advertise limits nothing enforces), `/profile` (still 404s), and any change to
-  `/dashboard` or the auth pages' markup.
+<!-- Populated by /feature load -->
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -334,3 +279,45 @@ Complete
   while a fresh account shows zeros. Deliberately not added: redirecting an
   already-signed-in visitor away from `/sign-in`, since the spec does not ask for it.
   Merged to `main` via `feature/auth-ui`.
+- **2026-07-28 — Landing page at `/`, and signed-in visitors bounced to the dashboard.**
+  Replaced the `<h1>DEVSTASH</h1>` stub with a seven-section public page — sticky nav,
+  hero, the seven item types, a static product preview, the capability list, a closing CTA
+  and a footer — under `src/components/landing/`, plus real title / description /
+  OpenGraph / Twitter metadata in the root layout. **`/` stays statically prerendered**
+  (`○ /` in the build): the signed-in redirect lives in `src/proxy.ts` rather than the page,
+  because `auth()` inside `page.tsx` would make `/` dynamic and cost the prerender for
+  every anonymous visitor, which is the entire audience for a landing page. The check is
+  cookie-only and touches no database — the session is a JWT and the proxy builds NextAuth
+  from `auth.config.ts`, which has no adapter. The proxy is now **path-aware**, because the
+  two cases are opposites: `/`, `/sign-in` and `/register` form a `SIGNED_OUT_ONLY` set
+  that redirects to `/dashboard` when a session exists, while everything else keeps
+  "no session → `/sign-in?callbackUrl=`". Adding `/sign-in` to the matcher is safe because
+  the Server Action posts there while the visitor still has no session, the OAuth round
+  trip returns to `/api/auth/callback/*` which the matcher does not cover, and sign-out
+  clears the cookie before the browser requests the page — all four flows were retested.
+  That redirect is a **303, not the default 307**: arrivals are normally GETs, but a stale
+  form posted from a second tab would be a POST and 307 preserves the method, whereas 303
+  correctly turns it into a GET of `/dashboard`. Sample content lives in
+  `src/components/landing/landing-content.ts` rather than a revived `mock-data.ts`, and no
+  marketing copy touches the database — that is what keeps the page static; type colors and
+  icons come from `SYSTEM_ITEM_TYPES` / `ItemTypeIcon` so no hex is restated and the preview
+  matches the real `ItemRow`. Animations add no dependency: `rise` and `caret-pulse`
+  keyframes with `--animate-*` tokens in `globals.css` applied through `motion-safe:`, and
+  scroll reveals via CSS `animation-timeline: view()` behind an `@supports` guard, so there
+  is no JavaScript and unsupported browsers simply show the content. `QueryDemo` — the
+  cycling query with a blinking caret — is the only client component. Two defects surfaced
+  by measuring rather than looking: (1) the demo card jumped between 158/164/201px each cycle
+  because queries had two or three hits and the line box collapsed while the query was
+  empty; every query now has exactly three hits and the query line carries `min-h-7`, giving
+  a flat 201px across a full cycle. (2) The page overflowed horizontally at 390px — 609px
+  wide on a 390px viewport — because `PreviewMock`'s grid children defaulted to
+  `min-width: auto`, so the single mobile column sized to *min-content*, and `truncate` sets
+  `white-space: nowrap`, making min-content the entire mono string; `min-w-0` on the two grid
+  children fixed it. This does not bite in the dashboard because `ItemRow` sits in plain
+  block flow there, not a grid track. Verified signed in and out across all four paths,
+  credentials sign-in through both the UI and the raw callback, sign-out landing on
+  `/sign-in`, 390px with no overflow, reduced motion running zero animations with every
+  section visible and the typing frozen, and a visible focus ring on every focusable
+  element. Out of scope by decision: a pricing / Free vs Pro section, since Pro gating is
+  display-only and would advertise limits nothing enforces. Merged to `main` via
+  `feature/landing-page`.
