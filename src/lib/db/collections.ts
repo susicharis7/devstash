@@ -59,6 +59,8 @@ type CollectionTypeItem = CollectionRecord["items"][number];
 
 const fetchUserCollections = cache(async () => {
   const userId = await getCurrentUserId();
+  if (!userId) return [];
+
   return prisma.collection.findMany({
     where: { userId },
     orderBy: { updatedAt: "desc" },
@@ -135,7 +137,17 @@ export async function getSidebarCollections(
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const where = { userId: await getCurrentUserId() };
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    return {
+      items: 0,
+      collections: 0,
+      favoriteItems: 0,
+      favoriteCollections: 0,
+    };
+  }
+
+  const where = { userId };
   const [items, collections, favoriteItems, favoriteCollections] =
     await Promise.all([
       prisma.item.count({ where }),

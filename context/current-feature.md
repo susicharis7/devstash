@@ -167,3 +167,16 @@ Completed
   (star vs. count). Also fixed the misindented `.map()` body in
   `getSidebarItemTypes`. No UI change (screenshot-verified). Merged to `main` via
   `chore/user-id-queries-and-dedupe`.
+- **2026-07-28 — Fix: empty database crashed the deployed dashboard.** The
+  `getCurrentUserId()` added above threw when `demo@devstash.io` was absent, which
+  turned the unseeded production branch (0 users, 0 item types, 0 items,
+  0 collections) into a Server Components render error on `/dashboard`. Before that
+  change the email-relation filter simply matched nothing and the page rendered
+  zeros. `getCurrentUserId()` now returns `string | null`, and the five queries
+  short-circuit to empty results (`[]`, or zeroed `DashboardStats`); the per-type
+  item counts moved into a `countItemsByType(userId)` helper so the `Promise.all`
+  in `getSidebarItemTypes` keeps both branches typed. Verified by serving
+  `next start` against the production branch: `/dashboard` returns 200 and renders
+  zeros with no server error. Production is still unseeded, so it shows an empty
+  shell (no system item types) until `db:seed` runs there or auth lands. Merged to
+  `main` via `fix/empty-database-render`.
