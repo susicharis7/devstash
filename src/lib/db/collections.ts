@@ -2,7 +2,7 @@ import { cache } from "react";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { demoUserWhere } from "@/lib/db/demo-user";
+import { getCurrentUserId } from "@/lib/db/current-user";
 import { FALLBACK_COLOR } from "@/lib/item-types";
 
 export interface DashboardCollectionType {
@@ -57,13 +57,14 @@ type CollectionRecord = Prisma.CollectionGetPayload<{
 
 type CollectionTypeItem = CollectionRecord["items"][number];
 
-const fetchDemoCollections = cache(() =>
-  prisma.collection.findMany({
-    where: demoUserWhere,
+const fetchUserCollections = cache(async () => {
+  const userId = await getCurrentUserId();
+  return prisma.collection.findMany({
+    where: { userId },
     orderBy: { updatedAt: "desc" },
     include: collectionTypeInclude,
-  })
-);
+  });
+});
 
 function rankCollectionTypes(items: CollectionTypeItem[]) {
   const counts = new Map<
@@ -113,14 +114,14 @@ function toSidebarCollection(collection: CollectionRecord): SidebarCollection {
 export async function getRecentCollections(
   limit = 6
 ): Promise<DashboardCollection[]> {
-  const collections = await fetchDemoCollections();
+  const collections = await fetchUserCollections();
   return collections.slice(0, limit).map(toDashboardCollection);
 }
 
 export async function getSidebarCollections(
   recentLimit = 6
 ): Promise<SidebarCollections> {
-  const collections = await fetchDemoCollections();
+  const collections = await fetchUserCollections();
 
   return {
     favorites: collections
@@ -134,7 +135,7 @@ export async function getSidebarCollections(
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const where = demoUserWhere;
+  const where = { userId: await getCurrentUserId() };
   const [items, collections, favoriteItems, favoriteCollections] =
     await Promise.all([
       prisma.item.count({ where }),

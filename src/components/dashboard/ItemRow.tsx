@@ -1,6 +1,7 @@
-import { Pin, Star } from "lucide-react";
+import { Pin } from "lucide-react";
 
 import type { DashboardItem } from "@/lib/db/items";
+import { FavoriteStar } from "@/components/dashboard/FavoriteStar";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -28,7 +29,7 @@ export function ItemRow({ item }: { item: DashboardItem }) {
             <Pin className="size-3.5 shrink-0 text-muted-foreground" />
           ) : null}
           {item.isFavorite ? (
-            <Star className="size-3.5 shrink-0 fill-yellow-400 text-yellow-400" />
+            <FavoriteStar className="size-3.5 shrink-0" />
           ) : null}
         </div>
         {item.description ? (
