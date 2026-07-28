@@ -180,3 +180,16 @@ Completed
   zeros with no server error. Production is still unseeded, so it shows an empty
   shell (no system item types) until `db:seed` runs there or auth lands. Merged to
   `main` via `fix/empty-database-render`.
+- **2026-07-28 — Fix: Vercel build failed with Prisma P1002.**
+  `prisma migrate deploy` timed out connecting to the production branch during the
+  Vercel build (P1002 — server reached, connection timed out). Nothing was pending;
+  `migrate status` reported the schema already up to date. Cause is a Neon cold
+  start: that compute is idle-suspended (the branch has no traffic) and Prisma's
+  default PostgreSQL connect timeout is 5s. `prisma.config.ts` now appends
+  `connect_timeout=30` to the migration URL when it is not already present, and
+  warns when `DATABASE_URL_UNPOOLED` is missing so the build log names the problem
+  instead of falling silently back to the pooled connection. The unpooled lookup
+  uses `||` rather than `??` so an env var set to an empty string counts as absent.
+  Verified with `prisma migrate status` against both branches, and with
+  `DATABASE_URL_UNPOOLED=` to exercise the warning and the pooled fallback. Merged
+  to `main` via `fix/vercel-migrate-timeout`.
