@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Star } from "lucide-react";
 
 import type { DashboardCollection } from "@/lib/db/collections";
-import { getItemTypeIcon } from "@/lib/item-type-icons";
+import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 
 export function CollectionCard({ collection }: { collection: DashboardCollection }) {
   return (
@@ -26,12 +26,14 @@ export function CollectionCard({ collection }: { collection: DashboardCollection
         {collection.description}
       </p>
       <div className="mt-4 flex items-center gap-2">
-        {collection.types.map((type) => {
-          const Icon = getItemTypeIcon(type.icon);
-          return (
-            <Icon key={type.icon} className="size-4" style={{ color: type.color }} />
-          );
-        })}
+        {collection.types.map((type) => (
+          <ItemTypeIcon
+            key={type.icon}
+            icon={type.icon}
+            className="size-4"
+            style={{ color: type.color }}
+          />
+        ))}
       </div>
     </Link>
   );

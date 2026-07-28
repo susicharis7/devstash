@@ -1,7 +1,7 @@
 import { Pin, Star } from "lucide-react";
 
 import type { DashboardItem } from "@/lib/db/items";
-import { getItemTypeIcon } from "@/lib/item-type-icons";
+import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -10,8 +10,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 export function ItemRow({ item }: { item: DashboardItem }) {
-  const Icon = getItemTypeIcon(item.icon);
-
   return (
     <div
       className="flex items-start gap-4 rounded-xl border border-l-4 bg-card p-4"
@@ -21,7 +19,7 @@ export function ItemRow({ item }: { item: DashboardItem }) {
         className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
         style={{ color: item.accentColor }}
       >
-        <Icon className="size-5" />
+        <ItemTypeIcon icon={item.icon} className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">

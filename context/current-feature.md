@@ -105,3 +105,14 @@ Not Started
   reduced-motion users get a static badge. Gating is display-only — the links
   stay navigable since all types are accessible during development. Merged to
   `main` via `feature/pro-badge-sidebar`.
+- **2026-07-28 — Cleanup pass.** Trimmed `src/lib/mock-data.ts` to just
+  `currentUser` (+ its `User` interface) — the item-type, collection and item
+  fixtures plus their interfaces were dead once the dashboard and sidebar went
+  DB-backed. Deleted the unused ShadCN `tooltip` component (the `radix-ui`
+  dependency stays, other components need it). Fixed the `react-hooks/static-components`
+  lint error in `ItemRow` by centralizing icon rendering in a new
+  `ItemTypeIcon` component (`createElement(getItemTypeIcon(icon), props)`), now
+  used by `ItemRow`, `CollectionCard` and `SidebarContent`. Doc sync: added
+  `password String?` to the draft `User` in `project-overview.md` and marked the
+  `ContentType` enum note as shipped; listed the `db:*` scripts in `CLAUDE.md`.
+  Committed the `.claude/` skills directory. Merged to `main` via `chore/cleanup`.
