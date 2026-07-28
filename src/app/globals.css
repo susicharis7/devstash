@@ -41,6 +41,8 @@
   --color-card: var(--card);
   --color-pro: var(--pro);
   --animate-pro-glow: pro-glow 3s ease-in-out infinite;
+  --animate-rise: rise 620ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  --animate-caret: caret-pulse 1.05s steps(1) infinite;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -130,6 +132,38 @@
   }
   50% {
     box-shadow: 0 0 8px 0 var(--pro-glow);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes caret-pulse {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 26%;
+    }
   }
 }
 

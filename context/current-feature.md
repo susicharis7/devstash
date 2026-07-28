@@ -1,18 +1,73 @@
-# Current Feature
+# Current Feature: Landing Page — Public Home at `/`
 
-<!-- Load a spec with /feature load [spec-name] -->
+Spec: `context/features/13-landing-page-spec.md`
 
 ## Status
 
-Not Started
+Complete
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- `/` becomes a real public landing page instead of the `<h1>DEVSTASH</h1>` stub: sticky
+  nav, hero, the seven item types, a static product preview, a feature list, a closing
+  CTA, and a footer.
+- Clear paths in: "Sign in" to `/sign-in` and "Create account" to `/register`, in both the
+  nav and the closing CTA.
+- A visitor who already holds a valid session token never sees the page — `/` redirects
+  them to `/dashboard`.
+- `/` stays **statically prerendered**. The build output must still show `○ /`.
+- Animations that serve the subject: one orchestrated hero load, a blinking-caret query
+  cycle as the signature moment, scroll-triggered section reveals, hover lift on cards —
+  with no new dependency and `prefers-reduced-motion` fully respected.
+- Root `metadata` upgraded from "DevStash application" to real public-facing title,
+  description, and Open Graph fields.
 
 ## Notes
 
-<!-- Populated by /feature load -->
+- **The signed-in redirect goes in `src/proxy.ts`, not in the page.** Calling `auth()`
+  inside `src/app/page.tsx` would make `/` dynamic and throw away the static prerender for
+  every anonymous visitor — precisely the audience the page exists for. The proxy runs
+  before the response is served, so anonymous traffic still gets the static page and
+  signed-in traffic never reaches it. The check is cookie-only and costs no database round
+  trip: the session is a JWT and the proxy initializes NextAuth from `auth.config.ts`,
+  which has no adapter.
+- **The proxy's logic has to become path-aware**, because the two cases are opposites.
+  Today it is "no session → `/sign-in`" for every matched path; adding `"/"` to that
+  matcher unchanged would bounce anonymous visitors off the landing page straight to
+  sign-in. It must branch: `/dashboard*` keeps "no session → `/sign-in`" with the
+  `callbackUrl`, while `/` becomes "session → `/dashboard`, otherwise continue". Matcher
+  entry `"/"` matches the root exactly, not every path.
+- **Decided: `/sign-in` and `/register` get the same redirect**, so a signed-in person is
+  never left staring at a sign-in form. All three live in one `SIGNED_OUT_ONLY` set in the
+  proxy. The redirect uses **303** rather than the default 307: a signed-in visitor is
+  almost always arriving by GET, but a stale form submitted from a second tab would be a
+  POST, and 307 preserves the method — 303 converts it to a GET of `/dashboard`, which is
+  what should happen. The auth flows themselves are unaffected because the Server Action
+  POST to `/sign-in` happens while the visitor still has no session, and the OAuth callback
+  lives at `/api/auth/callback/*`, which the matcher does not cover.
+- **Sample content stays local to the landing page**, in something like
+  `src/components/landing/landing-content.ts`. Do not recreate `src/lib/mock-data.ts`,
+  which was deliberately deleted when the app went DB-backed, and do not query the
+  database for marketing copy — keeping it local is what keeps `/` static.
+- **Type colors and icons come from `src/lib/item-types.ts`** via `SYSTEM_ITEM_TYPES` and
+  `ItemTypeIcon`. Never restate a hex value. `ItemTypeIcon` has no `'use client'`, so it
+  works inside a static server component.
+- **Scroll reveals need a call.** `tw-animate-css` is installed but only provides
+  `animate-in` / `animate-out` and a few accordion/caret keyframes — nothing
+  scroll-triggered. Prefer CSS scroll-driven animations (`animation-timeline: view()`)
+  behind an `@supports` guard: no JavaScript, no new dependency, and it degrades to
+  simply-visible. The alternative is a small `'use client'` IntersectionObserver wrapper.
+  If the cycling hero mock needs state, that one component may be `'use client'`; nothing
+  else should be.
+- The page is **dark-only** — `<html>` carries a hardcoded `dark` class in the root layout,
+  so there is no light variant to design here. Fonts are Geist Sans and Geist Mono,
+  already loaded via `next/font`; the mono face suits queries, tags, and code samples.
+- The preview mock should match the real `ItemRow` / `CollectionCard` visual language
+  (type-colored left border, tags, pin marker) so it is honest about what the app looks
+  like.
+- Out of scope: a pricing / Free vs Pro section (Pro gating is display-only today, so it
+  would advertise limits nothing enforces), `/profile` (still 404s), and any change to
+  `/dashboard` or the auth pages' markup.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
