@@ -1,45 +1,64 @@
-# Current Feature
+# Current Feature: Auth Credentials — Email/Password Provider
 
-Auth phase 1: NextAuth v5 + GitHub provider
+Auth phase 2: Credentials provider + registration
 
-Spec: `context/features/10-auth-phase-1-spec.md`
+Spec: `context/features/11-auth-phase-2-spec.md`
 
 ## Status
 
-Completed
+Complete
 
 ## Goals
 
-- NextAuth v5 (`next-auth@beta`) wired up with `@auth/prisma-adapter` against the
-  existing `Account` / `Session` / `User` models — no schema change needed.
-- Split config so the proxy stays edge-compatible: `src/auth.config.ts` holds
-  providers only, `src/auth.ts` adds the Prisma adapter and `strategy: 'jwt'`.
-- GitHub OAuth as the only provider, using NextAuth's default sign-in page
-  (no custom `pages.signIn` in this phase).
-- `/dashboard/*` protected by `src/proxy.ts` (Next.js 16's renamed middleware);
-  unauthenticated requests redirect to sign-in.
-- `Session.user.id` typed via `src/types/next-auth.d.ts`.
+- A Credentials provider accepts email/password sign-in alongside GitHub, validated
+  with bcryptjs against `User.password`.
+- The split config survives: `src/auth.config.ts` carries a Credentials
+  *placeholder* with `authorize: () => null` so the edge proxy still type-checks
+  without importing Prisma or bcryptjs, and `src/auth.ts` overrides it with the real
+  bcrypt validation.
+- `POST /api/auth/register` takes name/email/password/confirmPassword, rejects
+  mismatched passwords and duplicate emails, hashes with bcryptjs, and creates the
+  user.
+- GitHub OAuth from phase 1 keeps working unchanged.
 
 ## Notes
 
-- Next.js 16 renamed `middleware.ts` to `proxy.ts`; it must sit at `src/proxy.ts`,
-  the same level as `app/`, and export a named `proxy` (verified against
-  `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`).
-- The Auth.js docs construct `new PrismaClient()` inline; we pass the existing
-  `@/lib/prisma` singleton instead so the `PrismaPg` driver adapter is reused.
-- `@auth/prisma-adapter@2.11.3` peer-accepts `@prisma/client >=6`, so Prisma 7.9.0
-  needs no override.
-- The matcher is scoped to `["/dashboard", "/dashboard/:path*"]` rather than a
-  negative "everything except `_next`" pattern — the Next.js docs warn that a
-  matcher-less proxy also intercepts CSS/JS/images, and an allowlist avoids that
-  outright. Both entries are listed because only `/dashboard/:path*` is documented
-  as zero-or-more, and the bare path is cheap insurance.
-- Out of scope, deliberately: swapping `getCurrentUserId()` from the demo-user
-  email lookup to the real session, sign-out UI, the credentials provider, and a
-  custom sign-in page. Those are later auth phases — this one only proves the
-  GitHub round-trip works.
-- `AUTH_GITHUB_ID` / `AUTH_GITHUB_SECRET` come from a GitHub OAuth app that must be
-  created by hand; env files are gitignored, so they are set locally only.
+- `User.password String?` already exists (migration `20260724121751_add_user_password`,
+  added during the seed work), so the spec's "add password field via migration if not
+  already there" is already satisfied — **no migration this phase**.
+- `bcryptjs@3.0.3` is already a dependency; `prisma/seed.ts` hashes the demo user's
+  password with 12 rounds, so registration should match that cost factor.
+- Why the placeholder/override split: bcryptjs and Prisma are not edge-safe, and
+  `src/proxy.ts` initializes NextAuth from `auth.config.ts`. The provider must be
+  *listed* there so the sign-in page renders its form, but the real `authorize` can
+  only live in `auth.ts`. `src/auth.ts` already spreads `...authConfig` first, so an
+  override in its own `providers` array wins.
+- Registration is an API route rather than a Server Action because the spec's test
+  step drives it with curl, and it needs real HTTP status codes.
+- Inputs get a Zod schema per `coding-standards.md`; Zod is not yet a dependency, so
+  this phase adds it.
+- Credentials sign-in with `strategy: 'jwt'` does not write an `Account` row — only
+  OAuth does. Expect `User` +1 and `Account` unchanged when testing.
+- Emails normalize to lowercase in the shared `emailField` schema. Postgres compares
+  strings case-sensitively, so without this the duplicate-email guard was bypassable
+  (`Foo@x.com` and `foo@x.com` both registered) and sign-in failed on any case
+  difference from registration. Found in the `/feature review` pass.
+- `authorizeCredentials` always runs one `bcrypt.compare`, falling back to
+  `DECOY_PASSWORD_HASH` when the user is missing or has no password, so a hit and a
+  miss cost the same. Returning early on the miss leaked which emails are registered
+  via response time. Measured after the fix: 404 ms vs 405 ms median over 12
+  interleaved samples each, inside a 22–28 ms stdev. The decoy is a real 12-round
+  hash of random bytes, hardcoded rather than computed at import so cold starts do
+  not pay for it.
+- Registration caps passwords at 72 characters because bcrypt silently ignores input
+  past 72 bytes. The cap counts characters, not bytes, so it is a UX guardrail rather
+  than an exact bcrypt boundary.
+- Residual, not fixed: emails that arrive via the GitHub adapter are not passed
+  through the Zod schema, so an OAuth account whose provider email is mixed-case
+  would still store mixed-case. GitHub emails are lowercase in practice; normalizing
+  the adapter path would need a `signIn` callback.
+- Still out of scope (phase 3): custom `/sign-in` and register pages, sign-out UI,
+  the sidebar user display, and swapping `getCurrentUserId()` off the demo user.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
