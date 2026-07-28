@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Star } from "lucide-react";
 
 import type { DashboardCollection } from "@/lib/db/collections";
+import { FavoriteStar } from "@/components/dashboard/FavoriteStar";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 
 export function CollectionCard({ collection }: { collection: DashboardCollection }) {
@@ -16,7 +16,7 @@ export function CollectionCard({ collection }: { collection: DashboardCollection
           {collection.name}
         </h3>
         {collection.isFavorite ? (
-          <Star className="size-3.5 shrink-0 fill-yellow-400 text-yellow-400" />
+          <FavoriteStar className="size-3.5 shrink-0" />
         ) : null}
       </div>
       <p className="mt-0.5 text-sm text-muted-foreground">

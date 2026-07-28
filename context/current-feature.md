@@ -1,18 +1,30 @@
 # Current Feature
 
-<!-- Load a spec with /feature load to populate this file. -->
+Code review follow-up: user-scoped queries + sidebar/card dedupe
 
 ## Status
 
-Not Started
+Completed
 
 ## Goals
 
-<!-- Bullet points of what success looks like. -->
+- Dashboard and sidebar queries filter on the indexed `userId` column instead of
+  traversing the `User` relation by email, so the six per-request queries stop
+  joining `User`.
+- The demo-user indirection lives behind a single request-memoized
+  `getCurrentUserId()`, so swapping in a real NextAuth session later touches one file.
+- The favorite star renders from one shared component instead of three copies of
+  `fill-yellow-400 text-yellow-400`.
+- The sidebar's favorites and recents loops share one collection nav-link
+  component instead of duplicating href/active/`NavLink` construction.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from the spec. -->
+- No behaviour or UI change is intended — same rows, same order, same colors.
+- Findings came from a `code-improver` review pass; the `Tag` model's missing
+  `userId` / `@@unique([userId, name])` was also flagged but is a schema decision
+  requiring a migration, so it is deliberately out of scope here.
+- `prisma/seed.ts` keeps using an email lookup — it runs standalone, not per request.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -134,3 +146,24 @@ Not Started
   which also removed a dead `?? FALLBACK_COLOR` on the non-nullable
   `ItemType.color`. No UI change (screenshot-verified). Merged to `main` via
   `chore/dedupe-domain-constants`.
+- **2026-07-28 — User-scoped queries and sidebar/card dedupe.** From a
+  `code-improver` review pass. All six per-request dashboard queries filtered with
+  `where: { user: { email } }`, joining `User` instead of using the existing
+  `@@index([userId])`. Added `src/lib/db/current-user.ts` — `getCurrentUserId()`,
+  a React `cache`d id lookup that throws a "run `npm run db:seed`" error when the
+  user is missing — and switched `getPinnedItems`, `getRecentItems`,
+  `getSidebarItemTypes`, `fetchUserCollections` (renamed from
+  `fetchDemoCollections`) and `getDashboardStats` to `where: { userId }`. It lives
+  in its own file rather than in `demo-user.ts` because `prisma/seed.ts` imports
+  `DEMO_USER_EMAIL` from there, and pulling in `@/lib/prisma` would construct the
+  Prisma adapter before the seed's `loadEnvConfig()` runs (imports hoist above it),
+  leaving `DATABASE_URL` undefined. `demoUserWhere` is gone; `demo-user.ts` is now
+  just the email constant, and `current-user.ts` is the single seam for `auth()`.
+  Dedupe: new `FavoriteStar` component replaces three copies of
+  `fill-yellow-400 text-yellow-400` (`ItemRow`, `CollectionCard`,
+  `SidebarContent`), and a local `CollectionNavLink` in `SidebarContent` collapses
+  the near-identical favorites and recents loops into one component with a
+  `favorite` prop switching the icon (folder vs. accent dot) and trailing slot
+  (star vs. count). Also fixed the misindented `.map()` body in
+  `getSidebarItemTypes`. No UI change (screenshot-verified). Merged to `main` via
+  `chore/user-id-queries-and-dedupe`.

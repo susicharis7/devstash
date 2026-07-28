@@ -3,18 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Collapsible } from "radix-ui";
-import {
-  ChevronDown,
-  Folder,
-  FolderOpen,
-  Layers,
-  Settings,
-  Star,
-} from "lucide-react";
+import { ChevronDown, Folder, FolderOpen, Layers, Settings } from "lucide-react";
 
 import { currentUser } from "@/lib/mock-data";
-import type { SidebarCollections } from "@/lib/db/collections";
+import type {
+  SidebarCollection,
+  SidebarCollections,
+} from "@/lib/db/collections";
 import type { SidebarItemType } from "@/lib/db/items";
+import { FavoriteStar } from "@/components/dashboard/FavoriteStar";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -97,6 +94,49 @@ function ProBadge() {
   );
 }
 
+function CollectionNavLink({
+  collection,
+  favorite,
+  onNavigate,
+}: {
+  collection: SidebarCollection;
+  favorite: boolean;
+  onNavigate: () => void;
+}) {
+  const pathname = usePathname();
+  const href = `/collections/${collection.id}`;
+
+  return (
+    <NavLink
+      href={href}
+      active={pathname === href}
+      onNavigate={onNavigate}
+      icon={
+        favorite ? (
+          <Folder className="size-4 text-muted-foreground" />
+        ) : (
+          <span className="flex size-4 items-center justify-center">
+            <span
+              className="size-2.5 rounded-full"
+              style={{ backgroundColor: collection.accentColor }}
+            />
+          </span>
+        )
+      }
+      label={collection.name}
+      trailing={
+        favorite ? (
+          <FavoriteStar className="size-3.5" />
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {collection.itemCount}
+          </span>
+        )
+      }
+    />
+  );
+}
+
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="px-2 pt-3 pb-1 text-[0.65rem] font-semibold tracking-wider text-muted-foreground/70 uppercase">
@@ -164,51 +204,26 @@ export function SidebarContent({
             {collections.favorites.length > 0 ? (
               <>
                 <GroupLabel>Favorites</GroupLabel>
-                {collections.favorites.map((collection) => {
-                  const href = `/collections/${collection.id}`;
-                  return (
-                    <NavLink
-                      key={collection.id}
-                      href={href}
-                      active={pathname === href}
-                      onNavigate={closeMobile}
-                      icon={<Folder className="size-4 text-muted-foreground" />}
-                      label={collection.name}
-                      trailing={
-                        <Star className="size-3.5 fill-yellow-400 text-yellow-400" />
-                      }
-                    />
-                  );
-                })}
+                {collections.favorites.map((collection) => (
+                  <CollectionNavLink
+                    key={collection.id}
+                    collection={collection}
+                    favorite
+                    onNavigate={closeMobile}
+                  />
+                ))}
               </>
             ) : null}
 
             <GroupLabel>Recents</GroupLabel>
-            {collections.recents.map((collection) => {
-              const href = `/collections/${collection.id}`;
-              return (
-                <NavLink
-                  key={collection.id}
-                  href={href}
-                  active={pathname === href}
-                  onNavigate={closeMobile}
-                  icon={
-                    <span className="flex size-4 items-center justify-center">
-                      <span
-                        className="size-2.5 rounded-full"
-                        style={{ backgroundColor: collection.accentColor }}
-                      />
-                    </span>
-                  }
-                  label={collection.name}
-                  trailing={
-                    <span className="text-xs text-muted-foreground">
-                      {collection.itemCount}
-                    </span>
-                  }
-                />
-              );
-            })}
+            {collections.recents.map((collection) => (
+              <CollectionNavLink
+                key={collection.id}
+                collection={collection}
+                favorite={false}
+                onNavigate={closeMobile}
+              />
+            ))}
 
             <Link
               href="/collections"

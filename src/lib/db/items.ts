@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { demoUserWhere } from "@/lib/db/demo-user";
+import { getCurrentUserId } from "@/lib/db/current-user";
 import { PRO_TYPE_NAMES, SYSTEM_TYPE_ORDER } from "@/lib/item-types";
 
 export interface DashboardItem {
@@ -45,8 +45,9 @@ function toDashboardItem(item: ItemRecord): DashboardItem {
 }
 
 export async function getPinnedItems(): Promise<DashboardItem[]> {
+  const userId = await getCurrentUserId();
   const items = await prisma.item.findMany({
-    where: { ...demoUserWhere, isPinned: true },
+    where: { userId, isPinned: true },
     orderBy: { updatedAt: "desc" },
     ...itemQuery,
   });
@@ -54,8 +55,9 @@ export async function getPinnedItems(): Promise<DashboardItem[]> {
 }
 
 export async function getRecentItems(limit = 10): Promise<DashboardItem[]> {
+  const userId = await getCurrentUserId();
   const items = await prisma.item.findMany({
-    where: demoUserWhere,
+    where: { userId },
     orderBy: { createdAt: "desc" },
     take: limit,
     ...itemQuery,
@@ -74,6 +76,7 @@ export interface SidebarItemType {
 }
 
 export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
+  const userId = await getCurrentUserId();
   const [types, grouped] = await Promise.all([
     prisma.itemType.findMany({
       where: { isSystem: true },
@@ -81,7 +84,7 @@ export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
     }),
     prisma.item.groupBy({
       by: ["itemTypeId"],
-      where: demoUserWhere,
+      where: { userId },
       _count: { _all: true },
     }),
   ]);
@@ -98,12 +101,12 @@ export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
   return types
     .sort((a, b) => orderIndex(a.name) - orderIndex(b.name))
     .map((type) => ({
-    id: type.id,
-    name: `${type.name[0].toUpperCase()}${type.name.slice(1)}s`,
-    slug: `${type.name}s`,
-    icon: type.icon,
-    color: type.color,
-    count: countByType.get(type.id) ?? 0,
-    isPro: PRO_TYPE_NAMES.has(type.name),
-  }));
+      id: type.id,
+      name: `${type.name[0].toUpperCase()}${type.name.slice(1)}s`,
+      slug: `${type.name}s`,
+      icon: type.icon,
+      color: type.color,
+      count: countByType.get(type.id) ?? 0,
+      isPro: PRO_TYPE_NAMES.has(type.name),
+    }));
 }
