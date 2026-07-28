@@ -9,7 +9,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export const ITEM_TYPE_ICONS: Record<string, LucideIcon> = {
+import type { ItemTypeIconName } from "@/lib/item-types";
+
+export const ITEM_TYPE_ICONS: Record<ItemTypeIconName, LucideIcon> = {
   Code,
   Sparkles,
   Terminal,
@@ -20,5 +22,5 @@ export const ITEM_TYPE_ICONS: Record<string, LucideIcon> = {
 };
 
 export function getItemTypeIcon(icon: string): LucideIcon {
-  return ITEM_TYPE_ICONS[icon] ?? File;
+  return ITEM_TYPE_ICONS[icon as ItemTypeIconName] ?? File;
 }

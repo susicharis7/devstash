@@ -116,3 +116,21 @@ Not Started
   `password String?` to the draft `User` in `project-overview.md` and marked the
   `ContentType` enum note as shipped; listed the `db:*` scripts in `CLAUDE.md`.
   Committed the `.claude/` skills directory. Merged to `main` via `chore/cleanup`.
+- **2026-07-28 — Deduplicated domain constants and collection queries.** The seven
+  system item types were defined in three places; they now live once in
+  `src/lib/item-types.ts` (`SYSTEM_ITEM_TYPES` with `name`/`icon`/`color`/`isPro`,
+  plus derived `SYSTEM_TYPE_ORDER`, `PRO_TYPE_NAMES` and `FALLBACK_COLOR`), consumed
+  by `prisma/seed.ts`, `src/lib/db/items.ts` and `src/lib/item-type-icons.ts`. Icon
+  names are an `ItemTypeIconName` union, so `ITEM_TYPE_ICONS` is a
+  `Record<ItemTypeIconName, LucideIcon>` and the compiler now catches a type whose
+  icon has no lucide binding. Added `src/lib/db/demo-user.ts` (`DEMO_USER_EMAIL`,
+  `demoUserWhere`), replacing two duplicate constants and six inline `where`
+  fragments. `getRecentCollections` and `getSidebarCollections` were the same query;
+  both now go through one `fetchDemoCollections` memoized with React `cache`, so the
+  dashboard layout and page share a single collection query per request instead of
+  running it twice, with `toDashboardCollection` / `toSidebarCollection` as the only
+  difference. Row types are derived (`Prisma.ItemGetPayload<typeof itemQuery>`,
+  `Prisma.CollectionGetPayload`) instead of restating each `select` field by hand,
+  which also removed a dead `?? FALLBACK_COLOR` on the non-nullable
+  `ItemType.color`. No UI change (screenshot-verified). Merged to `main` via
+  `chore/dedupe-domain-constants`.

@@ -1,7 +1,7 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-
-const DEMO_USER_EMAIL = "demo@devstash.io";
-const FALLBACK_COLOR = "#6b7280";
+import { demoUserWhere } from "@/lib/db/demo-user";
+import { PRO_TYPE_NAMES, SYSTEM_TYPE_ORDER } from "@/lib/item-types";
 
 export interface DashboardItem {
   id: string;
@@ -28,16 +28,7 @@ const itemQuery = {
   },
 } as const;
 
-type ItemRecord = {
-  id: string;
-  title: string;
-  description: string | null;
-  isPinned: boolean;
-  isFavorite: boolean;
-  createdAt: Date;
-  itemType: { icon: string; color: string };
-  tags: { name: string }[];
-};
+type ItemRecord = Prisma.ItemGetPayload<typeof itemQuery>;
 
 function toDashboardItem(item: ItemRecord): DashboardItem {
   return {
@@ -45,7 +36,7 @@ function toDashboardItem(item: ItemRecord): DashboardItem {
     title: item.title,
     description: item.description,
     icon: item.itemType.icon,
-    accentColor: item.itemType.color ?? FALLBACK_COLOR,
+    accentColor: item.itemType.color,
     tags: item.tags.map((tag) => tag.name),
     isPinned: item.isPinned,
     isFavorite: item.isFavorite,
@@ -55,7 +46,7 @@ function toDashboardItem(item: ItemRecord): DashboardItem {
 
 export async function getPinnedItems(): Promise<DashboardItem[]> {
   const items = await prisma.item.findMany({
-    where: { user: { email: DEMO_USER_EMAIL }, isPinned: true },
+    where: { ...demoUserWhere, isPinned: true },
     orderBy: { updatedAt: "desc" },
     ...itemQuery,
   });
@@ -64,7 +55,7 @@ export async function getPinnedItems(): Promise<DashboardItem[]> {
 
 export async function getRecentItems(limit = 10): Promise<DashboardItem[]> {
   const items = await prisma.item.findMany({
-    where: { user: { email: DEMO_USER_EMAIL } },
+    where: demoUserWhere,
     orderBy: { createdAt: "desc" },
     take: limit,
     ...itemQuery,
@@ -82,18 +73,6 @@ export interface SidebarItemType {
   isPro: boolean;
 }
 
-const SYSTEM_TYPE_ORDER = [
-  "snippet",
-  "prompt",
-  "command",
-  "note",
-  "file",
-  "image",
-  "link",
-];
-
-const PRO_TYPE_NAMES = new Set(["file", "image"]);
-
 export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
   const [types, grouped] = await Promise.all([
     prisma.itemType.findMany({
@@ -102,7 +81,7 @@ export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
     }),
     prisma.item.groupBy({
       by: ["itemTypeId"],
-      where: { user: { email: DEMO_USER_EMAIL } },
+      where: demoUserWhere,
       _count: { _all: true },
     }),
   ]);

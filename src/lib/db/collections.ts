@@ -1,7 +1,9 @@
-import { prisma } from "@/lib/prisma";
+import { cache } from "react";
 
-const DEMO_USER_EMAIL = "demo@devstash.io";
-const FALLBACK_COLOR = "#6b7280";
+import type { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
+import { demoUserWhere } from "@/lib/db/demo-user";
+import { FALLBACK_COLOR } from "@/lib/item-types";
 
 export interface DashboardCollectionType {
   icon: string;
@@ -49,9 +51,19 @@ const collectionTypeInclude = {
   },
 } as const;
 
-type CollectionTypeItem = {
-  item: { itemType: { icon: string; color: string; name: string } };
-};
+type CollectionRecord = Prisma.CollectionGetPayload<{
+  include: typeof collectionTypeInclude;
+}>;
+
+type CollectionTypeItem = CollectionRecord["items"][number];
+
+const fetchDemoCollections = cache(() =>
+  prisma.collection.findMany({
+    where: demoUserWhere,
+    orderBy: { updatedAt: "desc" },
+    include: collectionTypeInclude,
+  })
+);
 
 function rankCollectionTypes(items: CollectionTypeItem[]) {
   const counts = new Map<
@@ -73,48 +85,42 @@ function rankCollectionTypes(items: CollectionTypeItem[]) {
   );
 }
 
+function toDashboardCollection(
+  collection: CollectionRecord
+): DashboardCollection {
+  const ranked = rankCollectionTypes(collection.items);
+
+  return {
+    id: collection.id,
+    name: collection.name,
+    description: collection.description,
+    isFavorite: collection.isFavorite,
+    itemCount: collection.items.length,
+    accentColor: ranked[0]?.color ?? FALLBACK_COLOR,
+    types: ranked.map(({ icon, color }) => ({ icon, color })),
+  };
+}
+
+function toSidebarCollection(collection: CollectionRecord): SidebarCollection {
+  return {
+    id: collection.id,
+    name: collection.name,
+    itemCount: collection.items.length,
+    accentColor: rankCollectionTypes(collection.items)[0]?.color ?? FALLBACK_COLOR,
+  };
+}
+
 export async function getRecentCollections(
   limit = 6
 ): Promise<DashboardCollection[]> {
-  const collections = await prisma.collection.findMany({
-    where: { user: { email: DEMO_USER_EMAIL } },
-    orderBy: { updatedAt: "desc" },
-    take: limit,
-    include: collectionTypeInclude,
-  });
-
-  return collections.map((collection) => {
-    const ranked = rankCollectionTypes(collection.items);
-
-    return {
-      id: collection.id,
-      name: collection.name,
-      description: collection.description,
-      isFavorite: collection.isFavorite,
-      itemCount: collection.items.length,
-      accentColor: ranked[0]?.color ?? FALLBACK_COLOR,
-      types: ranked.map(({ icon, color }) => ({ icon, color })),
-    };
-  });
+  const collections = await fetchDemoCollections();
+  return collections.slice(0, limit).map(toDashboardCollection);
 }
 
 export async function getSidebarCollections(
   recentLimit = 6
 ): Promise<SidebarCollections> {
-  const collections = await prisma.collection.findMany({
-    where: { user: { email: DEMO_USER_EMAIL } },
-    orderBy: { updatedAt: "desc" },
-    include: collectionTypeInclude,
-  });
-
-  const toSidebarCollection = (
-    collection: (typeof collections)[number]
-  ): SidebarCollection => ({
-    id: collection.id,
-    name: collection.name,
-    itemCount: collection.items.length,
-    accentColor: rankCollectionTypes(collection.items)[0]?.color ?? FALLBACK_COLOR,
-  });
+  const collections = await fetchDemoCollections();
 
   return {
     favorites: collections
@@ -128,7 +134,7 @@ export async function getSidebarCollections(
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const where = { user: { email: DEMO_USER_EMAIL } };
+  const where = demoUserWhere;
   const [items, collections, favoriteItems, favoriteCollections] =
     await Promise.all([
       prisma.item.count({ where }),
