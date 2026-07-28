@@ -11,14 +11,17 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { SidebarContent } from "@/components/dashboard/SidebarContent";
+import type { AvatarUser } from "@/components/user/UserAvatar";
 import { useSidebar } from "@/components/dashboard/sidebar-context";
 
 export function Sidebar({
   itemTypes,
   collections,
+  user,
 }: {
   itemTypes: SidebarItemType[];
   collections: SidebarCollections;
+  user: AvatarUser | null;
 }) {
   const { open, openMobile, setOpenMobile } = useSidebar();
 
@@ -31,7 +34,11 @@ export function Sidebar({
         )}
       >
         <div className="h-full w-64">
-          <SidebarContent itemTypes={itemTypes} collections={collections} />
+          <SidebarContent
+            itemTypes={itemTypes}
+            collections={collections}
+            user={user}
+          />
         </div>
       </aside>
 
@@ -47,7 +54,11 @@ export function Sidebar({
               Browse item types and collections.
             </SheetDescription>
           </SheetHeader>
-          <SidebarContent itemTypes={itemTypes} collections={collections} />
+          <SidebarContent
+            itemTypes={itemTypes}
+            collections={collections}
+            user={user}
+          />
         </SheetContent>
       </Sheet>
     </>

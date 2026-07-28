@@ -20,6 +20,11 @@ Replace NextAuth default pages with custom UI. Update user icon, email and usern
 - Submit to `/api/auth/register`
 - Redirect to sign-in on success
 
+### Sidebar
+
+- Make sure the sidebar doesn't expand vertically as we have more info on our page
+- It should be fixed
+
 ### Bottom Of Sidebar
 
 - Display user avatar (GitHub image or initials fallback)
@@ -43,7 +48,7 @@ Create a reusable avatar component that handles both cases.
 1. Go to `/sign-in` - verify custom page renders
 2. Sign in with GitHub - verify flow works
 3. Sign in with email/password - verify flow works
-4. Verify avatar shows in top bar (GitHub image or initials)
+4. Verify avatar shows at the bottom of the sidebar (GitHub image or initials)
 5. Click avatar - verify dropdown appears
 6. Click "Sign out" - verify logout and redirect
 7. Go to `/register` - create new account - verify redirect to sign-in
