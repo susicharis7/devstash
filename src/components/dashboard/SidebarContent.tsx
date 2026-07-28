@@ -15,7 +15,7 @@ import {
 import { currentUser } from "@/lib/mock-data";
 import type { SidebarCollections } from "@/lib/db/collections";
 import type { SidebarItemType } from "@/lib/db/items";
-import { getItemTypeIcon } from "@/lib/item-type-icons";
+import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -129,7 +129,6 @@ export function SidebarContent({
         <nav className="flex flex-col gap-4 p-3">
           <CollapsibleSection label="Types">
             {itemTypes.map((type) => {
-              const Icon = getItemTypeIcon(type.icon);
               const href = `/items/${type.slug}`;
               return (
                 <NavLink
@@ -137,7 +136,13 @@ export function SidebarContent({
                   href={href}
                   active={pathname === href}
                   onNavigate={closeMobile}
-                  icon={<Icon className="size-4" style={{ color: type.color }} />}
+                  icon={
+                    <ItemTypeIcon
+                      icon={type.icon}
+                      className="size-4"
+                      style={{ color: type.color }}
+                    />
+                  }
                   label={type.name}
                   trailing={
                     type.isPro ? (

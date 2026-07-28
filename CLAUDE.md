@@ -30,6 +30,12 @@ npm run dev      # start dev server at http://localhost:3000
 npm run build    # production build
 npm run start    # serve the production build (requires build first)
 npm run lint     # eslint (flat config)
+
+npm run db:migrate  # prisma migrate dev (create + apply a migration)
+npm run db:deploy   # prisma migrate deploy (production)
+npm run db:studio   # prisma studio
+npm run db:seed     # seed the development branch (prompts for confirmation)
+npm run db:test     # verify the database connection
 ```
 
 There is no test runner configured.

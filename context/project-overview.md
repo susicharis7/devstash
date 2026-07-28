@@ -170,6 +170,7 @@ model User {
   email                String?  @unique
   emailVerified        DateTime?
   image                String?
+  password             String?  // bcrypt hash for email/password sign-in
 
   // Billing
   isPro                Boolean  @default(false)
@@ -263,7 +264,8 @@ model Tag {
 ```
 
 > **Note:** The original spec listed `contentType` as `text | file`. Because links are
-> a first-class kind, this draft models it as an enum `TEXT | URL | FILE`. Confirm before migrating.
+> a first-class kind, it is modelled as an enum `TEXT | URL | FILE` — confirmed and shipped
+> in the `init` migration. See `prisma/schema.prisma` for the applied schema.
 
 ---
 
