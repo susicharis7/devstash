@@ -46,6 +46,8 @@ function toDashboardItem(item: ItemRecord): DashboardItem {
 
 export async function getPinnedItems(): Promise<DashboardItem[]> {
   const userId = await getCurrentUserId();
+  if (!userId) return [];
+
   const items = await prisma.item.findMany({
     where: { userId, isPinned: true },
     orderBy: { updatedAt: "desc" },
@@ -56,6 +58,8 @@ export async function getPinnedItems(): Promise<DashboardItem[]> {
 
 export async function getRecentItems(limit = 10): Promise<DashboardItem[]> {
   const userId = await getCurrentUserId();
+  if (!userId) return [];
+
   const items = await prisma.item.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -75,23 +79,27 @@ export interface SidebarItemType {
   isPro: boolean;
 }
 
+async function countItemsByType(userId: string | null) {
+  if (!userId) return new Map<string, number>();
+
+  const grouped = await prisma.item.groupBy({
+    by: ["itemTypeId"],
+    where: { userId },
+    _count: { _all: true },
+  });
+
+  return new Map(grouped.map((group) => [group.itemTypeId, group._count._all]));
+}
+
 export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
   const userId = await getCurrentUserId();
-  const [types, grouped] = await Promise.all([
+  const [types, countByType] = await Promise.all([
     prisma.itemType.findMany({
       where: { isSystem: true },
       select: { id: true, name: true, icon: true, color: true },
     }),
-    prisma.item.groupBy({
-      by: ["itemTypeId"],
-      where: { userId },
-      _count: { _all: true },
-    }),
+    countItemsByType(userId),
   ]);
-
-  const countByType = new Map(
-    grouped.map((group) => [group.itemTypeId, group._count._all])
-  );
 
   const orderIndex = (name: string) => {
     const index = SYSTEM_TYPE_ORDER.indexOf(name);
