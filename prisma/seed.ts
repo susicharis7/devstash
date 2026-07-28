@@ -4,6 +4,8 @@ import * as nextEnv from "@next/env";
 import bcrypt from "bcryptjs";
 
 import type { PrismaClient } from "../src/generated/prisma/client";
+import { DEMO_USER_EMAIL } from "../src/lib/db/demo-user";
+import { SYSTEM_ITEM_TYPES } from "../src/lib/item-types";
 
 nextEnv.loadEnvConfig(process.cwd(), process.env.NODE_ENV !== "production");
 
@@ -28,16 +30,6 @@ interface SeedCollection {
   isFavorite?: boolean;
   items: SeedItem[];
 }
-
-const ITEM_TYPES = [
-  { name: "snippet", icon: "Code", color: "#3b82f6" },
-  { name: "prompt", icon: "Sparkles", color: "#8b5cf6" },
-  { name: "command", icon: "Terminal", color: "#f97316" },
-  { name: "note", icon: "StickyNote", color: "#fde047" },
-  { name: "file", icon: "File", color: "#6b7280" },
-  { name: "image", icon: "Image", color: "#ec4899" },
-  { name: "link", icon: "Link", color: "#10b981" },
-];
 
 const COLLECTIONS: SeedCollection[] = [
   {
@@ -288,7 +280,7 @@ async function seed(prisma: PrismaClient) {
   const password = await bcrypt.hash("12345678", 12);
   const user = await prisma.user.create({
     data: {
-      email: "demo@devstash.io",
+      email: DEMO_USER_EMAIL,
       name: "Demo User",
       password,
       isPro: false,
@@ -297,7 +289,7 @@ async function seed(prisma: PrismaClient) {
   });
 
   const typeIdByName: Record<string, string> = {};
-  for (const type of ITEM_TYPES) {
+  for (const type of SYSTEM_ITEM_TYPES) {
     const created = await prisma.itemType.create({
       data: { name: type.name, icon: type.icon, color: type.color, isSystem: true },
     });
@@ -351,7 +343,7 @@ async function seed(prisma: PrismaClient) {
   }
 
   return {
-    itemTypes: ITEM_TYPES.length,
+    itemTypes: SYSTEM_ITEM_TYPES.length,
     collections: COLLECTIONS.length,
     items: itemCount,
     tags: tagNames.length,
