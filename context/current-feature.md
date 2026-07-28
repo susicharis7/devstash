@@ -1,75 +1,18 @@
-# Current Feature: Auth UI — Sign In, Register & Sign Out
+# Current Feature
 
-Auth phase 3: custom auth pages + sidebar user display
-
-Spec: `context/features/12-auth-phase-3-spec.md`
+<!-- Load a spec with /feature load [spec-name] -->
 
 ## Status
 
-Complete
+Not Started
 
 ## Goals
 
-- A custom `/sign-in` page with email/password fields, a "Sign in with GitHub"
-  button, a link to `/register`, and inline validation + error display — replacing
-  NextAuth's default page.
-- A custom `/register` page posting to the existing `POST /api/auth/register`, with
-  matching-password and email-format validation, redirecting to sign-in on success.
-- The sidebar footer shows the *real* signed-in user: avatar from `image` with an
-  initials fallback, their name, and a dropdown containing "Sign out". The avatar
-  itself links to `/profile`.
-- A reusable avatar component handles the image-or-initials split in one place.
-- The sidebar is fixed to the viewport: it stops growing vertically as page content
-  gets longer, so its user footer stays visible at the bottom of the screen instead
-  of sliding to the bottom of the document.
+<!-- Populated by /feature load -->
 
 ## Notes
 
-- This is the phase that retires the demo user. `getCurrentUserId()` in
-  `src/lib/db/current-user.ts` was built as the single seam for exactly this — it
-  should now read `auth()` instead of looking up `DEMO_USER_EMAIL`. Until it does,
-  a signed-in user still sees the demo account's collections and items.
-- `src/lib/mock-data.ts` currently exports only `currentUser`, consumed by
-  `SidebarContent.tsx:242-251`. Once the sidebar reads the session, that file and its
-  `User` interface become dead and should be deleted, not left behind.
-- `getInitials` already exists locally in `SidebarContent.tsx:24-31`; the spec's
-  reusable avatar component should absorb it rather than duplicate it.
-- Setting `pages.signIn: '/sign-in'` in the auth config is what redirects the proxy
-  to the custom page. `src/proxy.ts` currently hardcodes a redirect to
-  `/api/auth/signin` and must be updated in step with it, or protected routes will
-  keep landing on the default page.
-- `signOut` is already exported from `src/auth.ts`. The sidebar is a client
-  component, so sign-out needs either a Server Action wrapper or
-  `signOut` from `next-auth/react` — the former keeps the client bundle smaller.
-- Sign-in errors arrive as `?error=CredentialsSignin&code=credentials` on the URL.
-  The custom page should read that and show one generic "Invalid email or password"
-  message; per the Auth.js docs, do not distinguish which field was wrong.
-- Registration returns `{ success, data, error }` with the first Zod issue as
-  `error`. A field-level form may want all issues — that would mean returning
-  `error.issues` from the route, a small change to an endpoint that already shipped.
-- The existing ShadCN components cover most of this: `avatar`, `button`, `input`,
-  `separator` are installed. A dropdown for the sign-out menu is not — that needs
-  `npx shadcn@latest add dropdown-menu`.
-- `/profile` does not exist yet. The spec only asks that the avatar link there, so
-  the link will 404 until a later phase builds the page.
-- Why the sidebar currently grows: `src/app/dashboard/layout.tsx:23` wraps the shell
-  in `flex h-full min-h-screen`. `body` is `min-h-full` (auto height), so `h-full`
-  resolves to `auto` and only `min-h-screen` applies — the flex row is free to exceed
-  the viewport, and `<aside>` stretches to match it. `main`'s `overflow-y-auto` never
-  engages because its parent grows instead of clipping, so the document scrolls and
-  the sidebar footer ends up at the bottom of the *page*.
-- The fix belongs in the layout, not in the sidebar: bound the shell to the viewport
-  (`flex h-dvh overflow-hidden`) so `main` becomes the only scroll container.
-  `SidebarContent` is already built for a bounded parent — `flex h-full flex-col`
-  with a `min-h-0 flex-1` `ScrollArea` and a `shrink-0` footer — it just never
-  receives a bounded height today. Prefer `h-dvh` over `h-screen` so mobile browser
-  chrome does not cut off the footer.
-- Keep the collapse animation working: `Sidebar.tsx:29-31` animates `width` between
-  `w-64` and `w-0`, which a flex child supports. Switching to `position: fixed` for
-  the sidebar would break that and force manual content offsets, so bounded-height
-  flex is the better route.
-- The user block lives in the sidebar footer only — confirmed, no top-bar avatar.
-  Testing step 4 in the spec said "top bar" and has been corrected to say sidebar.
+<!-- Populated by /feature load -->
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -299,3 +242,40 @@ Complete
   the Zod schema, so a mixed-case provider email would still store mixed-case —
   normalizing that needs a `signIn` callback. Merged to `main` via
   `feature/auth-credentials`.
+- **2026-07-28 — Auth phase 3: custom auth pages, sidebar user menu, fixed sidebar.**
+  Replaced NextAuth's default pages with `/sign-in` and `/register`, put the real
+  signed-in user in the sidebar footer, and stopped the sidebar growing with page
+  content. `pages.signIn` in `src/auth.config.ts` points at `/sign-in` and
+  `src/proxy.ts` redirects there instead of `/api/auth/signin`. `src/actions/auth.ts`
+  wraps `signIn`/`signOut` as Server Actions; the credentials action catches
+  `AuthError` and returns a generic "Invalid email or password" while rethrowing
+  everything else, which is what lets `NEXT_REDIRECT` propagate on success — catching
+  broadly there would silently break the redirect. `/register` reuses the shared
+  `registerSchema` client-side so the form gets per-field errors without changing the
+  API route, which stays the authority. New `src/components/user/UserAvatar.tsx`
+  centralizes the image-or-initials split and absorbed the `getInitials` helper that
+  had been local to `SidebarContent`; `SidebarUser.tsx` adds the dropdown with Profile
+  and Sign out, with the avatar linking to `/profile` (which does not exist yet and
+  404s until a later phase). Small shared pieces — `AuthCard`, `AuthField`,
+  `AuthError` — keep the two pages from duplicating card chrome and field markup.
+  Installed the ShadCN `dropdown-menu`. **This retires the demo user:**
+  `getCurrentUserId()` now reads `auth()` rather than looking up `DEMO_USER_EMAIL`, so
+  the dashboard shows the signed-in account's own data; `src/lib/mock-data.ts` was its
+  last consumer and is deleted (`demo-user.ts` stays because `prisma/seed.ts` imports
+  the constant). Sidebar fix: the shell was `flex h-full min-h-screen`, and because
+  `body` is `min-h-full` the `h-full` resolved to `auto`, so only `min-h-screen`
+  applied — the flex row grew past the viewport, stretched `<aside>` to match, and left
+  `main`'s `overflow-y-auto` inert so the document scrolled instead. The shell is now
+  `flex h-dvh overflow-hidden`, making `main` the only scroll container; measured on a
+  2092px page, `<aside>` is 879px (exactly one viewport), `main` scrolls and the
+  document does not. `h-dvh` over `h-screen` so mobile browser chrome cannot clip the
+  footer, and bounded-height flex rather than `position: fixed` so the `w-64`↔`w-0`
+  collapse animation keeps working. Gotcha worth remembering: `lucide-react` 1.x
+  dropped brand icons, so there is no `Github` export — the mark is an inline SVG in
+  `src/components/icons/GitHubIcon.tsx`. Also corrected testing step 4 in the spec,
+  which said "top bar" where the requirements say sidebar footer. Verified all seven
+  spec steps against the development branch, plus wrong-password and client-validation
+  paths; signing in as the seeded demo user still shows its 18 items and 5 collections
+  while a fresh account shows zeros. Deliberately not added: redirecting an
+  already-signed-in visitor away from `/sign-in`, since the spec does not ask for it.
+  Merged to `main` via `feature/auth-ui`.
