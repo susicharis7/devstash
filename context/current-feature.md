@@ -1,64 +1,18 @@
-# Current Feature: Auth Credentials — Email/Password Provider
+# Current Feature
 
-Auth phase 2: Credentials provider + registration
-
-Spec: `context/features/11-auth-phase-2-spec.md`
+<!-- Load a spec with /feature load [spec-name] -->
 
 ## Status
 
-Complete
+Not Started
 
 ## Goals
 
-- A Credentials provider accepts email/password sign-in alongside GitHub, validated
-  with bcryptjs against `User.password`.
-- The split config survives: `src/auth.config.ts` carries a Credentials
-  *placeholder* with `authorize: () => null` so the edge proxy still type-checks
-  without importing Prisma or bcryptjs, and `src/auth.ts` overrides it with the real
-  bcrypt validation.
-- `POST /api/auth/register` takes name/email/password/confirmPassword, rejects
-  mismatched passwords and duplicate emails, hashes with bcryptjs, and creates the
-  user.
-- GitHub OAuth from phase 1 keeps working unchanged.
+<!-- Populated by /feature load -->
 
 ## Notes
 
-- `User.password String?` already exists (migration `20260724121751_add_user_password`,
-  added during the seed work), so the spec's "add password field via migration if not
-  already there" is already satisfied — **no migration this phase**.
-- `bcryptjs@3.0.3` is already a dependency; `prisma/seed.ts` hashes the demo user's
-  password with 12 rounds, so registration should match that cost factor.
-- Why the placeholder/override split: bcryptjs and Prisma are not edge-safe, and
-  `src/proxy.ts` initializes NextAuth from `auth.config.ts`. The provider must be
-  *listed* there so the sign-in page renders its form, but the real `authorize` can
-  only live in `auth.ts`. `src/auth.ts` already spreads `...authConfig` first, so an
-  override in its own `providers` array wins.
-- Registration is an API route rather than a Server Action because the spec's test
-  step drives it with curl, and it needs real HTTP status codes.
-- Inputs get a Zod schema per `coding-standards.md`; Zod is not yet a dependency, so
-  this phase adds it.
-- Credentials sign-in with `strategy: 'jwt'` does not write an `Account` row — only
-  OAuth does. Expect `User` +1 and `Account` unchanged when testing.
-- Emails normalize to lowercase in the shared `emailField` schema. Postgres compares
-  strings case-sensitively, so without this the duplicate-email guard was bypassable
-  (`Foo@x.com` and `foo@x.com` both registered) and sign-in failed on any case
-  difference from registration. Found in the `/feature review` pass.
-- `authorizeCredentials` always runs one `bcrypt.compare`, falling back to
-  `DECOY_PASSWORD_HASH` when the user is missing or has no password, so a hit and a
-  miss cost the same. Returning early on the miss leaked which emails are registered
-  via response time. Measured after the fix: 404 ms vs 405 ms median over 12
-  interleaved samples each, inside a 22–28 ms stdev. The decoy is a real 12-round
-  hash of random bytes, hardcoded rather than computed at import so cold starts do
-  not pay for it.
-- Registration caps passwords at 72 characters because bcrypt silently ignores input
-  past 72 bytes. The cap counts characters, not bytes, so it is a UX guardrail rather
-  than an exact bcrypt boundary.
-- Residual, not fixed: emails that arrive via the GitHub adapter are not passed
-  through the Zod schema, so an OAuth account whose provider email is mixed-case
-  would still store mixed-case. GitHub emails are lowercase in practice; normalizing
-  the adapter path would need a `signIn` callback.
-- Still out of scope (phase 3): custom `/sign-in` and register pages, sign-out UI,
-  the sidebar user display, and swapping `getCurrentUserId()` off the demo user.
+<!-- Populated by /feature load -->
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -254,3 +208,37 @@ Complete
   `getCurrentUserId()`, so a signed-in GitHub user sees demo data — rewiring that,
   plus sign-out UI and the credentials provider, is phases 2 and 3. Also added
   `.playwright-mcp/` to `.gitignore`. Merged to `main` via `feature/auth-phase-1`.
+- **2026-07-28 — Auth phase 2: credentials provider + registration.** Email/password
+  sign-in alongside GitHub, plus `POST /api/auth/register`. No migration —
+  `User.password` came with the seed work (`20260724121751_add_user_password`).
+  `src/auth.config.ts` now exports `authProviders(authorize)` so the provider list is
+  declared once: the edge config passes `() => null` and `src/auth.ts` injects the
+  real bcrypt check, keeping Prisma and bcryptjs out of `src/proxy.ts`. That works
+  because phase 1 already spread `...authConfig` first, so `auth.ts` keys win. Added
+  `zod@4.4.3` (required by `coding-standards.md` for input validation) with
+  `signInSchema` / `registerSchema` in `src/lib/validations/auth.ts`; used the v4
+  top-level `z.email()` since `z.string().email()` is deprecated there. Registration
+  hashes at 12 rounds to match `prisma/seed.ts` and returns the
+  `{ success, data, error }` shape with real status codes (201 / 400 / 409 / 500).
+  Three defects were caught by a `/feature review` pass before merge: (1) emails were
+  stored and compared verbatim, and because Postgres is case-sensitive the
+  duplicate-email guard was bypassable — `MixedCase@Test.com` and
+  `mixedcase@test.com` both registered 201 — while sign-in failed on any case
+  difference; the shared `emailField` now applies `.toLowerCase()`. (2) `authorize`
+  returned early when the user was missing or had no password, so only the hit path
+  paid ~200 ms of bcrypt and response time leaked which emails are registered; it now
+  always runs one `bcrypt.compare` against a hardcoded `DECOY_PASSWORD_HASH` (a real
+  12-round hash of random bytes, hardcoded so cold starts do not pay to compute it),
+  measured afterwards at 404 ms vs 405 ms median over 12 interleaved samples each
+  inside a 22–28 ms stdev. (3) registration now caps passwords at 72 characters,
+  where bcrypt starts silently ignoring input. Also dropped a speculative unused
+  `RegisterInput` export. Verified against the development branch: 201 with a
+  `$2b$12$` 60-char hash, correct status for duplicate / mismatch / short password /
+  bad email / malformed JSON, cross-case sign-in reaches `/dashboard`, wrong
+  passwords and OAuth-only (NULL password) users rejected generically with
+  `CredentialsSignin`, GitHub OAuth still round-trips, and credentials sign-in writes
+  no `Account` row. Test rows were removed from the development branch afterwards.
+  Residual, deliberately not fixed: emails created through the GitHub adapter bypass
+  the Zod schema, so a mixed-case provider email would still store mixed-case —
+  normalizing that needs a `signIn` callback. Merged to `main` via
+  `feature/auth-credentials`.
