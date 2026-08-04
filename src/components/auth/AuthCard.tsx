@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { Layers } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 export function AuthCard({
   title,
   description,
+  icon,
   children,
   footer,
 }: {
   title: string;
   description: string;
+  icon?: React.ReactNode;
   children: React.ReactNode;
   footer: React.ReactNode;
 }) {
@@ -26,8 +30,18 @@ export function AuthCard({
         </Link>
 
         <div className="rounded-xl border bg-card p-6">
-          <h1 className="text-xl font-semibold">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          {icon ? <div className="mb-5 flex justify-center">{icon}</div> : null}
+          <h1 className={cn("text-xl font-semibold", icon && "text-center")}>
+            {title}
+          </h1>
+          <p
+            className={cn(
+              "mt-1 text-sm break-words text-muted-foreground",
+              icon && "text-center"
+            )}
+          >
+            {description}
+          </p>
           <div className="mt-6">{children}</div>
         </div>
 

@@ -1,18 +1,169 @@
-# Current Feature
-
-<!-- Load a spec with /feature load [spec-name] -->
+# Current Feature: Email Verification on Register
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- Registering with email/password sends a verification email via **Resend**
+  containing a one-click link; the account cannot sign in until that link is clicked.
+- Clicking the link lands on a **branded `/verify-email` page** that matches the
+  existing auth UI (`AuthCard` shell, dark-first, same tokens) and shows a clear
+  success / expired / invalid / already-verified state with the right next action.
+- Unverified credentials users get a specific "verify your email" message on sign-in
+  (not the generic "Invalid email or password"), with a **Resend email** button.
+- GitHub OAuth sign-in is unaffected — it must keep working with no verification step.
+- Tokens are single-use, expiring, and stored hashed; the flow leaks no information
+  about which emails are registered.
+- `npm run build` passes and the whole flow is verified end to end in the browser
+  against the **development** Neon branch.
 
 ## Notes
 
-<!-- Populated by /feature load -->
+### Decisions
+
+**Token storage — new `EmailVerificationToken` model. One migration.**
+
+The existing `VerificationToken` table (from `init`, verified empty on the dev branch:
+`identifier`/`token`/`expires`, unique `token`, unique `(identifier, token)`, 0 rows)
+was the obvious candidate, and it stays exactly as it is. We are not extending it,
+for one concrete reason: `@auth/prisma-adapter`'s `createVerificationToken` writes only
+those three columns, so any `userId` added there would have to be **nullable** — and a
+non-null `userId` FK with cascade delete is the whole point of migrating. Extending it
+would also mean re-checking our semantics against the adapter's contract on every
+`@auth/*` upgrade, and would leave our rows sharing a table (and a `token` unique index)
+with magic-link rows if the Email provider is ever added. A separate table costs one
+`CREATE TABLE` and removes all of that.
+
+```prisma
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  token     String    @unique   // sha256 hex of the emailed value, never the raw token
+  userId    String
+  expires   DateTime
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+```
+
+- Raw token = 32 random bytes, base64url; only its **sha256** is stored, so a DB read
+  cannot be replayed into an account takeover.
+- `expires` = now + **24 hours**.
+- **Consumption sets `usedAt`, it does not delete the row.** This is what makes
+  "already verified" a real, distinguishable state instead of collapsing into "invalid"
+  on a second click — the single reason `usedAt` exists.
+- `createdAt` gives the resend cooldown an honest timestamp instead of deriving one
+  from `expires`.
+- Requesting a new link **deletes** that user's prior rows (used or not), so at most one
+  live token exists per user and used rows don't accumulate.
+- `onDelete: Cascade` means no orphans when an account is deleted.
+
+Migration via `npm run db:migrate` only, name `add_email_verification_token`
+(per CLAUDE.md — never the Neon MCP migration tools).
+
+**Four distinguishable outcomes**, each with its own page state:
+`verified` · `already-verified` (row found, `usedAt` set) · `expired` (row found,
+past `expires`) · `invalid` (no such token).
+
+**Verification consumes on GET.** `/verify-email?token=…` is a server component that
+verifies and marks the user, then renders the result. Known tradeoff: a corporate link
+scanner can consume the token before the human clicks. Accepted — it's the flow the
+spec asks for, and the "already verified" and "expired → resend" states cover the fallout.
+
+**Sign-in gating lives in `authorize` (`src/auth.ts`), not in a global check.**
+Gate condition is `user.password && !user.emailVerified`. OAuth users have no password,
+so GitHub never hits it — this is why gating must not be a blanket `emailVerified` check.
+Confirmed against the dev branch: the existing GitHub account
+(`susicharis99@gmail.com`, provider `github`, no password) has `emailVerified = null`,
+so a blanket check would lock it out today. The check runs **after** `bcrypt.compare`
+succeeds, preserving the constant-time decoy-hash behaviour from auth phase 2.
+
+**Surfacing "not verified" without leaking.** `authorize` throws a custom error extending
+`CredentialsSignin` with `code: "EmailNotVerified"`; `signInWithCredentials` in
+`src/actions/auth.ts` maps that code to a specific message and keeps returning the generic
+`INVALID_CREDENTIALS` for everything else. Safe to reveal, because the correct password was
+already supplied.
+
+**Base URL.** No `AUTH_URL` / app-URL var exists today. Add `AUTH_URL` to
+`.env.development` (`http://localhost:3000`) and `.env.production` — NextAuth v5 already
+understands the name, and the link builder reads it with a fallback to the request origin.
+
+**Sender address.** Add `EMAIL_FROM`, defaulting to `DevStash <onboarding@resend.dev>`.
+⚠️ **Constraint to confirm before testing:** Resend's shared `onboarding@resend.dev` sender
+only delivers to the email address that owns the Resend account. Real delivery to arbitrary
+addresses needs a verified domain in Resend. Decide which we're using when we get to testing.
+
+**Email template:** plain HTML + text strings in `src/lib/email/templates/` — no
+`react-email` dependency for one transactional email.
+
+### Implementation outline
+
+1. `npm i resend`; add `AUTH_URL` + `EMAIL_FROM` to both env files.
+2. Prisma: add `EmailVerificationToken` + the relation field on `User`;
+   `npm run db:migrate` → `add_email_verification_token`. Then
+   `prisma migrate status` against both branches before committing.
+3. `src/lib/email/resend.ts` — lazy Resend client singleton (must not construct at
+   import time; the key is absent during `next build`).
+4. `src/lib/email/send-verification-email.ts` — create token, build the absolute URL,
+   send. Errors are logged, never thrown into the registration response.
+5. `src/lib/auth/verification-tokens.ts` — `createVerificationToken(userId)` (deletes
+   the user's prior rows first) and `consumeVerificationToken(raw)` returning a
+   discriminated `verified | already-verified | expired | invalid`. The verify path is
+   one transaction: set `User.emailVerified` and stamp `usedAt` together.
+6. `POST /api/auth/register` — after `user.create`, send the email. Registration still
+   returns 201 if the send fails (the account exists; the user can resend).
+7. `POST /api/auth/verify-email/resend` — generic 200 regardless of whether the email
+   exists or is already verified; 60-second cooldown off the newest row's `createdAt`.
+8. `src/app/verify-email/page.tsx` — server component, consumes the token, renders one
+   of the four states through `AuthCard` + a small `VerificationResult` component
+   (icon + heading + body + primary action). No second `return` branch inside one
+   component (coding standards) — state → content map.
+9. `RegisterForm` → redirect to `/register/check-email?email=…` ("we sent you a link",
+   with a resend button) instead of today's `/sign-in?registered=1`.
+10. `src/auth.ts` gate + `src/actions/auth.ts` error mapping + a resend affordance on
+    the sign-in error.
+11. `src/proxy.ts` — no change needed: the matcher is an allowlist, so `/verify-email`
+    and `/register/check-email` are already public and unintercepted. Confirm during testing.
+
+### Testing checklist
+
+1. Register a new account → 201, email arrives, `emailVerified` is null in the DB.
+2. Sign in before clicking → blocked with the specific "verify your email" message.
+3. Click the link → `/verify-email` success state, `emailVerified` set, `usedAt` stamped
+   (the row is kept, not deleted — that is what preserves the already-verified state).
+4. Sign in after verifying → reaches `/dashboard`.
+5. Reuse the same link → **already verified** state (not an error), with a **Sign in** action.
+6. Tampered / unknown token → **invalid** state, distinct from the above.
+7. Expired token (backdate `expires` in the DB) → expired state with a working resend.
+8. Resend endpoint: generic response for unknown and already-verified emails; second
+   call inside 60s is throttled.
+9. GitHub OAuth sign-in still works end to end and needs no verification — the existing
+   `susicharis99@gmail.com` account has `emailVerified = null` and must stay able to sign in.
+10. Seeded demo user (`emailVerified` already set at `prisma/seed.ts:287`) can still sign in.
+11. `/verify-email` renders correctly at 390px and in reduced-motion.
+12. `npm run build` passes.
+
+### Out of scope
+
+- **Dropping the `VerificationToken` table — keep it.** It is the NextAuth adapter's own
+  table, listed as required in the adapter schema, and `@auth/prisma-adapter` calls
+  `prisma.verificationToken.*` in `createVerificationToken` / `useVerificationToken`.
+  Removing the model would delete that delegate from the generated client, breaking those
+  adapter methods (and likely the `PrismaAdapter(prisma)` typecheck) the moment we add
+  magic-link or passwordless sign-in. It holds 0 rows and costs nothing to keep, so
+  dropping it is a destructive migration for no gain.
+- A scheduled sweep of used/expired `EmailVerificationToken` rows. Creating a new token
+  already deletes that user's prior rows and account deletion cascades, so growth is
+  bounded at ~1 row per registered user.
+- Password reset emails (same Resend plumbing, separate feature).
+- Verifying emails for existing OAuth accounts.
+- Blocking unverified users at the proxy/dashboard layer — the sign-in gate is enough,
+  since credentials sign-in is the only way in for these accounts.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
