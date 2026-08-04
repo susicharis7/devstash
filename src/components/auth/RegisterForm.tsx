@@ -58,7 +58,9 @@ export function RegisterForm() {
         return;
       }
 
-      router.push("/sign-in?registered=1");
+      router.push(
+        `/register/check-email?email=${encodeURIComponent(parsed.data.email)}`
+      );
     } catch {
       setError("Could not reach the server. Try again.");
     } finally {

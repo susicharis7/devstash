@@ -6,6 +6,7 @@ import { signInWithCredentials, signInWithGitHub } from "@/actions/auth";
 import { AuthError } from "@/components/auth/AuthError";
 import { GitHubIcon } from "@/components/icons/GitHubIcon";
 import { AuthField } from "@/components/auth/AuthField";
+import { ResendVerificationButton } from "@/components/auth/ResendVerificationButton";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -34,6 +35,12 @@ export function SignInForm({ callbackUrl }: { callbackUrl: string }) {
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="callbackUrl" value={callbackUrl} />
         {state.error ? <AuthError message={state.error} /> : null}
+        {state.unverifiedEmail ? (
+          <ResendVerificationButton
+            email={state.unverifiedEmail}
+            label="Resend verification email"
+          />
+        ) : null}
         <AuthField
           name="email"
           label="Email"

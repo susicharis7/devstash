@@ -28,11 +28,12 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts    Account[]
-  sessions    Session[]
-  items       Item[]
-  collections Collection[]
-  itemTypes   ItemType[]
+  accounts                Account[]
+  sessions                Session[]
+  items                   Item[]
+  collections             Collection[]
+  itemTypes               ItemType[]
+  emailVerificationTokens EmailVerificationToken[]
 }
 
 model Account {
@@ -72,6 +73,19 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  expires   DateTime
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model ItemType {

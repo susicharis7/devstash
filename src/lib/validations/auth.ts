@@ -2,6 +2,10 @@ import { z } from "zod";
 
 const emailField = z.email("Enter a valid email address").toLowerCase();
 
+export const resendVerificationSchema = z.object({
+  email: emailField,
+});
+
 export const signInSchema = z.object({
   email: emailField,
   password: z.string().min(1, "Password is required"),

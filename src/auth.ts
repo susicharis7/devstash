@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 
 import authConfig, { authProviders } from "@/auth.config";
+import { EmailNotVerifiedError } from "@/lib/auth/errors";
 import { prisma } from "@/lib/prisma";
 import { signInSchema } from "@/lib/validations/auth";
 
@@ -15,7 +16,14 @@ async function authorizeCredentials(credentials: unknown) {
 
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email },
-    select: { id: true, name: true, email: true, image: true, password: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      image: true,
+      password: true,
+      emailVerified: true,
+    },
   });
 
   const passwordMatches = await bcrypt.compare(
@@ -24,6 +32,8 @@ async function authorizeCredentials(credentials: unknown) {
   );
 
   if (!user?.password || !passwordMatches) return null;
+
+  if (!user.emailVerified) throw new EmailNotVerifiedError();
 
   return { id: user.id, name: user.name, email: user.email, image: user.image };
 }
