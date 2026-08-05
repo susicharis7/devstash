@@ -1,18 +1,28 @@
-# Current Feature
-
-<!-- Load a spec with /feature load [spec-name] -->
+# Current Feature: Vitest unit testing setup
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- Set up Vitest as the project's unit test runner (was "no test runner configured").
+- Scope tests to **server actions and utilities only** — no component/UI tests.
+- Resolve the `@/*` path alias in tests and run in a Node environment (no jsdom/React).
+- Add `npm run test` (one-shot) and `npm run test:watch` scripts.
+- Write a representative suite: pure utilities plus at least one server action (with mocks).
+- Update the workflow in `ai-interaction.md` and other docs to fold testing in.
 
 ## Notes
 
-<!-- Populated by /feature load -->
+- No spec file — inline request.
+- Trap: importing `@/lib/prisma` or `@/auth` constructs the Prisma pg adapter at module load
+  (needs `DATABASE_URL`). Utility tests must target modules that don't import those; server-action
+  tests must `vi.mock` them.
+- Testable pure utilities: `item-types`, `utils` (cn), `validations/auth` (zod), `rate-limit`
+  (`getClientIp`, `rateLimitMessage`), `auth/errors`, `email/send-email` (`buildAppUrl`).
+- Server action to cover: `actions/account.ts` `changePasswordAction` (clean branch coverage).
+- Keep test files out of the `next build` type-check so production build stays decoupled.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->

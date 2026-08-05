@@ -282,6 +282,7 @@ model Tag {
 | **Auth** | [NextAuth v5](https://authjs.dev) — email/password + GitHub OAuth, rate limited per IP/email |
 | **AI** | [OpenAI](https://platform.openai.com) — `gpt-5-nano` |
 | **Styling** | [Tailwind CSS v4](https://tailwindcss.com) + [ShadCN UI](https://ui.shadcn.com) |
+| **Testing** | [Vitest](https://vitest.dev) — unit tests for server actions + utilities (no component tests) |
 
 - Single codebase / repo to minimize overhead.
 - ⚠️ **Never** `db push` or modify DB structure directly — always use migrations (dev → prod).

@@ -51,6 +51,9 @@ npm run build    # production build
 npm run start    # serve the production build (requires build first)
 npm run lint     # eslint (flat config)
 
+npm run test        # vitest run (one-shot; unit tests for server actions + utilities)
+npm run test:watch  # vitest in watch mode
+
 npm run db:migrate  # prisma migrate dev (create + apply a migration)
 npm run db:deploy   # prisma migrate deploy (production)
 npm run db:studio   # prisma studio
@@ -58,4 +61,10 @@ npm run db:seed     # seed the development branch (prompts for confirmation)
 npm run db:test     # verify the database connection
 ```
 
-There is no test runner configured.
+Unit tests run on **Vitest** (`vitest.config.mts`, Node environment). Scope is
+**server actions and utilities only — no component/UI tests**. Tests are colocated as
+`*.test.ts` next to the module they cover and are excluded from the `next build`
+type-check (`tsconfig.json`). Because importing `@/lib/prisma` or `@/auth` constructs
+the Prisma adapter at load, utility tests target modules that avoid those imports, and
+server-action tests `vi.mock` them. `next/server` and `next-auth` need vitest's alias +
+`server.deps.inline` (already wired in the config) to resolve under Node.
