@@ -669,3 +669,14 @@ Not Started
   only in the gitignored generated Prisma client, lint clean, and `.env` is empty with all
   vars living in `.env.development`/`.env.production`. Build and lint verified unaffected.
   Merged to `main` via `chore/cleanup-tests`.
+- **2026-08-05 — Made `/feature test` output ephemeral.** Workflow change so generated
+  tests are a per-feature validation gate, never standing files. `/feature test` still
+  creates colocated `*.test.ts` and runs them; `/feature complete` now has a new **step 1**
+  that runs `npm run test` one last time, then deletes all `src/**/*.test.ts` **before** the
+  commit — so tests validate the feature but never enter git and `main` carries none
+  (chosen over commit-then-delete to avoid history churn). Tradeoff on the record: these
+  tests are one-shot validation, not a persistent regression net; each `/feature test`
+  regenerates from the current code. Updated `.claude/skills/feature/actions/test.md`
+  (ephemerality note) and `complete.md` (the delete step + renumbering), and synced the
+  docs — `ai-interaction.md` Testing section, `CLAUDE.md` testing paragraph. Docs-only; no
+  code or build impact. Merged to `main` via `chore/ephemeral-feature-tests`.
