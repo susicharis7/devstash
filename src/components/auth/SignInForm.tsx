@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { signInWithCredentials, signInWithGitHub } from "@/actions/auth";
@@ -52,6 +53,14 @@ export function SignInForm({ callbackUrl }: { callbackUrl: string }) {
           label="Password"
           type="password"
           autoComplete="current-password"
+          labelAction={
+            <Link
+              href="/forgot-password"
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              Forgot password?
+            </Link>
+          }
         />
         <Button type="submit" className="w-full" disabled={isPending}>
           {isPending ? "Signing in…" : "Sign in"}

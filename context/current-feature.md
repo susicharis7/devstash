@@ -1,18 +1,179 @@
-# Current Feature
-
-<!-- Load a spec with /feature load [spec-name] -->
+# Current Feature: Forgot Password
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- A **"Forgot password?"** link on `/sign-in` leads to `/forgot-password`, where entering
+  an email sends a reset link via Resend.
+- The link opens `/reset-password?token=…`, a branded page (`AuthCard`, same tokens as the
+  auth pages) with new-password + confirm fields, ending in a success state.
+- Submitting the **current** password is rejected with a specific message, and the reset
+  link stays usable so the user can simply try again.
+- Tokens live in the **existing `VerificationToken` table — no migration**. Single-use,
+  short-lived, stored hashed.
+- The flow leaks nothing about which emails are registered: identical response for
+  unknown, OAuth-only and throttled addresses.
+- GitHub-only accounts are unaffected and cannot be converted into password accounts
+  by this flow.
+- `npm run build` passes and the whole flow is verified end to end in the browser against
+  the **development** Neon branch.
 
 ## Notes
 
-<!-- Populated by /feature load -->
+### Decisions
+
+**Token storage — reuse `VerificationToken`. No migration.** Confirmed still empty on the
+dev branch (0 rows). Columns are `identifier` / `token` / `expires`, with unique `token`
+and unique `(identifier, token)`.
+
+- `identifier` = **`password-reset:{email}`**. The namespace prefix is what makes reuse
+  safe: if NextAuth's Email provider is ever added, the adapter's `useVerificationToken`
+  works on its own unprefixed identifiers and cannot consume our rows. The consume path
+  rejects any row whose identifier lacks the prefix, and the email is read back out of it,
+  which is why no `userId` column is needed.
+- `token` = **sha256 hex** of the emailed value (32 random bytes, base64url). A DB read
+  cannot be replayed into a password reset.
+- `expires` = now + **1 hour**. Deliberately shorter than the 24h verification TTL — this
+  token grants account takeover, not just a flag flip.
+- Requesting a new link **deletes that identifier's existing rows** first, so at most one
+  live reset token exists per email.
+- The 60-second request cooldown derives creation time as `expires - 1h`; the table has no
+  `createdAt` and the TTL is fixed, so this is exact — the same trick considered for
+  verification before that feature got its own table.
+
+**What we give up versus `EmailVerificationToken`, and why it doesn't matter here.** No
+`usedAt`, so consumption **deletes** the row and "already used" is indistinguishable from
+"unknown". For verification that mattered (a second click on a working link is a normal,
+friendly event). For a reset it does not: a consumed reset link *must* die, and used /
+expired / unknown all collapse into one honest "this link is no longer valid — request a
+new one" state. No FK either, so a deleted user can leave an orphan row; it expires within
+the hour and consumption resolves the user by email, so an orphan just reads as invalid.
+
+**GET must not consume — this is the opposite of `/verify-email`.** There we accepted that
+a corporate link scanner could burn the token, because the "already verified" state made
+that harmless. Here burning the token would strand the user at a dead form before they
+typed anything. So `/reset-password` **validates on GET** (exists, correct prefix, not
+expired) and renders either the form or the invalid state; the **POST** re-validates and
+consumes. Validation logic is shared so the two paths cannot drift.
+
+**Consumption is race-safe without a transaction on the token.** `deleteMany({ where: { token } })`
+returns a count; only a `count === 1` claim proceeds to write the new password. Two
+simultaneous submits mean one wins and the other gets the invalid state. The delete and the
+`user.update` run in one interactive transaction so a failed hash-write cannot leave the
+token spent.
+
+**Only accounts that already have a password.** A GitHub-only user (`password = null`)
+requesting a reset gets the same generic response and **no email**. Letting this flow set a
+first password would silently convert an OAuth account into a credentials account, and —
+worse — that user has `emailVerified = null`, so the phase-2 gate would immediately block
+the sign-in they just set up. "Set a password for an OAuth account" is a separate feature.
+
+**A completed reset also sets `emailVerified`.** If a credentials user never verified,
+finishing a reset proves they control the inbox — exactly the proof `/verify-email`
+demands — so the same transaction stamps `emailVerified` when it is null. Without this,
+a user could reset their password and still be locked out by the sign-in gate with no
+obvious way forward. It is not a bypass: both paths require clicking a link in that inbox.
+
+**Reusing the current password is rejected — and the check runs *before* the token is
+consumed.** That ordering is the whole point: if the claim ran first, a user who typed
+their existing password would get an error *and* a dead link, forcing another email. So
+`consumePasswordResetToken` loads the current hash, `bcrypt.compare`s the plaintext, and
+returns `"same-password"` while leaving the row untouched, so the same link can be
+submitted again. This is why the function now takes the **plaintext** and hashes
+internally — hashing in the route meant paying ~200 ms of bcrypt before we even knew the
+token was valid, and made the comparison impossible.
+
+Outcomes are a union (`reset | invalid | same-password`) rather than a boolean, so the
+route maps each to its own message and the compiler catches an unhandled case. The message
+is safe to be specific: you can only see it while holding a valid reset token, which
+already proves control of the inbox.
+
+Not treated as "the same password": a different case (`Secret1234` vs `secret1234`) or
+padded whitespace. bcrypt compares bytes, so those are genuinely different passwords and
+are allowed through — matching how sign-in treats them.
+
+**Salt rounds were in three places** (`register`, this flow, `src/auth.ts`'s decoy
+compare), so `src/lib/auth/password.ts` now owns `hashPassword` / `verifyPassword` at 12
+rounds. `prisma/seed.ts` keeps its own inline `bcrypt.hash(..., 12)` — importing app
+modules there risks the `loadEnvConfig` ordering trap documented in an earlier entry.
+
+**Known limitation, deliberately accepted: existing sessions survive a reset.** Sessions are
+JWTs with no server-side revocation, so a stolen session cookie stays valid until it expires
+even after the password changes. Fixing it properly needs either a `passwordChangedAt`
+column checked in the `jwt` callback or a switch to database sessions. Out of scope here,
+but it should be written down rather than discovered later.
+
+**Dedupe while we're here.** `sendVerificationEmail` and the new `sendPasswordResetEmail`
+would otherwise duplicate: resolve `EMAIL_FROM`, build an absolute URL from
+`AUTH_URL || origin`, call Resend, swallow-and-log errors. Extract `sendEmail()` and
+`buildAppUrl(path, origin)` into `src/lib/email/send-email.ts`. The two HTML templates are
+also near-identical, so extract the dark shell into
+`src/lib/email/templates/layout.ts` (`heading` / `body` / CTA / footnote), keeping the
+HTML-escaping helper in one place. Two consumers each — this is the point at which
+centralizing is right, not speculative.
+
+### Implementation outline
+
+1. `src/lib/validations/auth.ts` — extract the shared `passwordField` (min 8 / max 72) out
+   of `registerSchema`, add `forgotPasswordSchema` (email) and `resetPasswordSchema`
+   (token + password + confirmPassword, with the existing match refinement).
+2. `src/lib/auth/password-reset-tokens.ts` — `createPasswordResetToken(email)`,
+   `findValidPasswordResetToken(raw)` (read-only, for the GET), `consumePasswordResetToken(raw)`,
+   `isWithinResetCooldown(email)`, plus the `password-reset:` identifier helpers.
+3. `src/lib/email/send-email.ts` + `templates/layout.ts` — extract from the verification
+   sender/template, then rewrite `send-verification-email.ts` on top of them (no behaviour
+   change; re-verify one verification email still sends).
+4. `src/lib/email/templates/password-reset-email.ts` and
+   `src/lib/email/send-password-reset-email.ts`.
+5. `POST /api/auth/password-reset/request` — generic 200 always; sends only when the user
+   exists, has a password, and is outside the 60s cooldown.
+6. `POST /api/auth/password-reset/confirm` — validates, consumes, hashes at 12 rounds to
+   match `prisma/seed.ts` and registration, sets `emailVerified` when null.
+7. `src/app/forgot-password/page.tsx` — `AuthCard` + a client `ForgotPasswordForm` that
+   swaps to a generic sent-state (separate component, per the one-return rule).
+8. `src/app/reset-password/page.tsx` — server component; validates the token and renders
+   either `ResetPasswordForm` or the invalid state, reusing `AuthIcon` and the
+   state→content map pattern from `VerificationResult`.
+9. `SignInForm` — "Forgot password?" link aligned with the Password label.
+10. `src/proxy.ts` — the matcher is an allowlist, so both new routes are already public and
+    unintercepted. Confirm during testing; note that a signed-in visitor can still reach
+    them, which is harmless and matches how `/verify-email` behaves.
+
+### Testing checklist
+
+1. `/sign-in` shows the link; `/forgot-password` renders and submits.
+2. Known credentials email → generic sent-state, email arrives, exactly one
+   `VerificationToken` row with the `password-reset:` prefix.
+3. Unknown email, and a GitHub-only email → identical response, **no email, no row**.
+4. Second request inside 60s → same response, no new row (compare `expires`).
+5. Link opens the form; **loading it twice does not consume the token**.
+6. Submit new password → success state, `password` hash changed, row gone.
+7. Sign in with the new password reaches `/dashboard`; the old password fails.
+8. Reusing the consumed link → invalid state with a "request a new link" action.
+9. Expired token (backdate `expires`) → invalid state.
+10. Tampered token, missing token, and an unprefixed row (insert one to simulate an adapter
+    token) → invalid state, and the adapter row is left untouched.
+11. Resetting an unverified credentials account sets `emailVerified`, and that account can
+    then sign in.
+11a. Submitting the **current** password → specific "already your password" message, the
+    token row **survives**, and submitting a genuinely new password on the same link then
+    succeeds.
+11b. Same password in a different case, and with padded whitespace → both accepted as new.
+11c. A too-short or mismatched password that also equals the current one → the Zod
+    message wins (validation runs before the same-password check).
+12. Verification emails still send after the `sendEmail` refactor.
+13. `/forgot-password` and `/reset-password` at 390px and in reduced-motion.
+14. `npm run build` passes.
+
+### Out of scope
+
+- Revoking existing JWT sessions on password change (see the limitation above).
+- Letting OAuth-only accounts set a first password.
+- A change-password form for signed-in users (different flow, no token needed).
+- Any migration — reusing `VerificationToken` is the explicit ask, and it fits.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->

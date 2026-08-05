@@ -1,20 +1,12 @@
 import { createVerificationToken } from "@/lib/auth/verification-tokens";
-import { getResendClient } from "@/lib/email/resend";
+import { buildAppUrl, sendEmail } from "@/lib/email/send-email";
 import { verificationEmail } from "@/lib/email/templates/verification-email";
-
-const DEFAULT_FROM = "DevStash <onboarding@resend.dev>";
 
 interface SendVerificationEmailInput {
   userId: string;
   email: string;
   name: string | null;
   origin: string;
-}
-
-function buildVerificationUrl(token: string, origin: string) {
-  const base = (process.env.AUTH_URL || origin).replace(/\/+$/, "");
-
-  return `${base}/verify-email?token=${encodeURIComponent(token)}`;
 }
 
 export async function sendVerificationEmail({
@@ -25,27 +17,14 @@ export async function sendVerificationEmail({
 }: SendVerificationEmailInput) {
   try {
     const token = await createVerificationToken(userId);
-    const { subject, html, text } = verificationEmail({
-      url: buildVerificationUrl(token, origin),
-      name,
-    });
+    const url = buildAppUrl(
+      `/verify-email?token=${encodeURIComponent(token)}`,
+      origin
+    );
 
-    const { error } = await getResendClient().emails.send({
-      from: process.env.EMAIL_FROM || DEFAULT_FROM,
-      to: email,
-      subject,
-      html,
-      text,
-    });
-
-    if (error) {
-      console.error("[verification-email] Resend rejected the send", error);
-      return false;
-    }
-
-    return true;
+    return await sendEmail({ to: email, ...verificationEmail({ url, name }) });
   } catch (error) {
-    console.error("[verification-email] Could not send", error);
+    console.error("[verification-email] Could not create the token", error);
     return false;
   }
 }

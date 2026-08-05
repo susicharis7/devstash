@@ -1,11 +1,9 @@
-import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
+import { hashPassword } from "@/lib/auth/password";
 import { sendVerificationEmail } from "@/lib/email/send-verification-email";
 import { prisma } from "@/lib/prisma";
 import { registerSchema } from "@/lib/validations/auth";
-
-const SALT_ROUNDS = 12;
 
 function errorResponse(error: string, status: number) {
   return NextResponse.json({ success: false, error }, { status });
@@ -38,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     const user = await prisma.user.create({
-      data: { name, email, password: await bcrypt.hash(password, SALT_ROUNDS) },
+      data: { name, email, password: await hashPassword(password) },
       select: { id: true, name: true, email: true },
     });
 

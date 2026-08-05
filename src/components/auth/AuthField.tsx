@@ -7,6 +7,7 @@ export function AuthField({
   autoComplete,
   error,
   defaultValue,
+  labelAction,
 }: {
   name: string;
   label: string;
@@ -14,14 +15,18 @@ export function AuthField({
   autoComplete?: string;
   error?: string;
   defaultValue?: string;
+  labelAction?: React.ReactNode;
 }) {
   const errorId = `${name}-error`;
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={name} className="text-sm font-medium">
-        {label}
-      </label>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={name} className="text-sm font-medium">
+          {label}
+        </label>
+        {labelAction}
+      </div>
       <Input
         id={name}
         name={name}
