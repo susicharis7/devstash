@@ -1,33 +1,18 @@
-# Current Feature: Profile Page
+# Current Feature
 
-<!-- Spec: context/features/14-profile-spec.md -->
+<!-- Load a spec with /feature load [spec-name] -->
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Add a protected `/profile` route (currently 404s from the sidebar avatar link)
-- Display user info: email, name, avatar (GitHub image or initials), account creation date
-- Show usage stats: total items, total collections, and a per-type breakdown
-  (snippets, prompts, notes, commands, links, files, images)
-- Change password — only for accounts that signed up with email/password, not GitHub OAuth
-- Delete account, behind a confirmation dialog
-- Follow existing patterns for data fetching (server components + `src/lib/db/*`) and components
+<!-- Populated by /feature load -->
 
 ## Notes
 
-- Avatar: reuse `src/components/user/UserAvatar.tsx` (image-or-initials split already centralized)
-- Change password visibility keys off `User.password != null`, the same signal
-  `authorize` and the forgot-password flow use for "email account"
-- Delete account cascades — `Item`, `Collection`, `Account`, `Session` all have
-  `onDelete: Cascade` on `userId`
-- Type breakdown can likely reuse `countItemsByType(userId)` in `src/lib/db/items.ts`
-- Route protection: add to the `src/proxy.ts` matcher (allowlist, not a negative pattern)
-- Password change should reuse `src/lib/auth/password.ts` (`hashPassword` / `verifyPassword`)
-- Open question at implementation time: existing JWT sessions survive a password
-  change (recorded as unfixed in the forgot-password entry) — same limitation applies here
+<!-- Populated by /feature load -->
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -444,3 +429,66 @@ In Progress
   Deliberately unfixed and recorded: **existing JWT sessions survive a password reset**,
   since there is no server-side revocation; that needs a `passwordChangedAt` check in the
   `jwt` callback or database sessions. Merged to `main` via `feature/forgot-password`.
+- **2026-08-05 — Profile page (`/profile`) with usage stats, change password and delete
+  account.** The sidebar avatar has linked to `/profile` since auth phase 3 and 404'd until
+  now. **No migration** — `User.createdAt` was already in the `init` migration, so the
+  "joined" date needed nothing new (an early read of the spec wrongly assumed otherwise).
+  **The shell moved into an `(app)` route group**: `app/dashboard/layout.tsx` →
+  `app/(app)/layout.tsx` and `app/dashboard/page.tsx` → `app/(app)/dashboard/page.tsx`, so
+  `/profile` inherits the sidebar + top bar with **no URL change** (`ƒ /dashboard` and
+  `ƒ /profile` both in the build, `○ /` still prerendered). The alternative — a second
+  `profile/layout.tsx` rendering a shared `AppShell` — was rejected because it leaves two
+  layouts to keep in sync; the route group also means every future app route (`/items`,
+  `/collections`) gets the shell for free. Protection is one more entry in the
+  **`src/proxy.ts` allowlist**, not a negative pattern, per the phase-1 reasoning.
+  `src/lib/db/profile.ts` **maps `password` to a `hasPassword` boolean inside the query
+  function**, so the bcrypt hash never crosses into a client component — that single boolean
+  drives both the account badge and whether the change-password section renders. It keys off
+  `password != null`, the same signal `authorize` and the forgot-password flow use for "email
+  account"; the badge therefore *infers* provenance, which is correct only because nothing
+  links a password and a GitHub account to one row today (no auto-linking, and reset is
+  refused for OAuth-only accounts). **Mutations are Server Actions, not API routes**
+  (`src/actions/account.ts`), inverting the choice made for register / verify / reset: those
+  needed real status codes for unauthenticated callers, whereas these are authenticated
+  mutations with no external clients, and `signOut()` after a delete *requires* an action
+  context. The delete uses **`deleteMany` rather than `delete`** so a row already gone is not
+  an error, and `signOut()` sits **outside** the try/catch — catching it would swallow
+  `NEXT_REDIRECT`, the same trap documented for `signInWithCredentials`. Cascade verified
+  empirically: deleting the account took its item, collection and `EmailVerificationToken`
+  with it. **The "new password must differ" check compares plaintext and runs before any
+  hashing**, mirroring the same-password check in the reset flow — cheap, exact, and it
+  cannot be expressed after hashing. `getSidebarItemTypes` gained a React `cache` wrapper so
+  the layout and the profile page share one query pair per request instead of running the
+  per-type counts twice — the same dedupe `fetchUserCollections` already had. Reuse over new
+  code throughout: `UserAvatar`, `StatCard`, `ItemTypeIcon`, `AuthField`/`AuthError`,
+  `getDashboardStats`, and `hashPassword`/`verifyPassword`. Installed ShadCN `alert-dialog`.
+  Verified against the development branch: wrong current password rejected; mismatch and
+  new-equals-current caught per field; a successful change **rotated the hash and the old
+  password then failed at the credentials callback while the new one signed in** (reverted to
+  the seed credential afterwards); a throwaway account deleted itself, redirected to `/`, and
+  cascaded; per-user scoping confirmed (throwaway showed 1/1 while the demo user showed
+  18/5); the OAuth branch (`password = NULL`) flipped the badge and hid the form; unauthenticated
+  `/profile` → 307 `/sign-in?callbackUrl=%2Fprofile`; and a **stale JWT whose user row was
+  deleted** → 307 `/sign-in` with no render crash — the guard that the `fix/empty-database-render`
+  entry exists to prevent. 390px shows no horizontal overflow and no truncated text. Three
+  defects found by measuring rather than looking: (1) **a failed delete was invisible** —
+  `preventDefault()` on the confirm keeps the dialog open, but `AuthError` was a sibling of
+  `<AlertDialog>` in normal page flow and therefore rendered *beneath* the portaled `z-50`
+  overlay, so the user would see a re-enabled button and no reason; it moved inside
+  `AlertDialogContent` and now clears when the dialog closes. (2) The same fix closed a
+  **double-submit window**: `isPending` was reset in `finally`, re-enabling the button while
+  the post-delete redirect was still in flight. (3) Chrome flagged the change-password form
+  for having **no username field**, so password managers could not associate the entry — a
+  hidden `autoComplete="username"` input carrying the email fixes it. Also: the Collections
+  stat card truncated to "Coll…" at 390px, so the two cards now stack on mobile. Deliberately
+  not addressed and worth remembering: **existing JWT sessions survive a password change**
+  (observed directly — the same unfixed limitation as the reset flow, needing
+  `passwordChangedAt` in the `jwt` callback or DB sessions); **no rate limit on the
+  current-password check**, acceptable because an attacker needs a valid session first, at
+  which point they already have full access; and a GitHub user has **no path to set a first
+  password**, since the spec scopes the form to email accounts. Testing caveat: Playwright's
+  real click/keypress delivery broke partway through the session (`evaluate` kept working),
+  so the sidebar avatar → `/profile` link and the dialog buttons were confirmed via
+  DOM-dispatched events with React handling them rather than genuine mouse input, and the
+  server-side guard blocking a password change on an OAuth account is present but was never
+  driven end to end. Merged to `main` via `feature/profile-page`.
