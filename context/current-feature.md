@@ -1,25 +1,18 @@
-# Current Feature: Items List View
+# Current Feature
+
+<!-- Load a spec with /feature load [spec-name] -->
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Add a dynamic route `/items/[type]` (e.g. `/items/snippets`, `/items/notes`).
-- Fetch and display items filtered by the route's type, scoped to the signed-in user.
-- Render a responsive grid of `ItemCard` components — two columns on medium screens and up.
-- Give each card a left border colored by its item type.
-- Pinned items sort to the top of the list, then by newest.
-- Follow existing codebase patterns (route group shell, DB helpers, view models, `ItemTypeIcon`, `SYSTEM_ITEM_TYPES`).
+<!-- Populated by /feature load -->
 
 ## Notes
 
-- Spec: `context/features/16-item-list-view-spec.md`.
-- The sidebar Types section already links to `/items/[slug]` (plural slugs like `snippets`), so the route must resolve those slugs back to a type.
-- `ItemCard` does not exist yet — the dashboard uses `ItemRow` (list row). The spec calls for a card grid, so a new `ItemCard` component is expected.
-- Type→color/icon come from `SYSTEM_ITEM_TYPES` / `ItemTypeIcon`; do not restate hex values.
-- All types are navigable during development (Pro gating is display-only).
+<!-- Populated by /feature load -->
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -565,3 +558,50 @@ In Progress
   imported them), and `project-overview.md`'s tech stack lost its speculative
   `Caching | Redis (maybe)` row in favour of a real Upstash row. Merged to `main` via
   `feature/auth-rate-limiting`.
+- **2026-08-05 — Items list view at `/items/[type]`.** Dynamic route rendering a
+  user's items of one type as a responsive card grid. Lives in the `(app)` route
+  group, so it inherits the sidebar + top bar shell for free — the reason that group
+  was created in the profile work — and is protected by one more `src/proxy.ts`
+  allowlist entry (`/items/:path*`), not a negative pattern. **The route param is a
+  plural slug, not a type name**: the sidebar Types links have pointed at
+  `/items/{name}s` since the phase-2 sidebar, so the page resolves `snippets` → the
+  `snippet` system type via a new `getSystemTypeBySlug` in `src/lib/item-types.ts`;
+  an unknown slug (or a bare `/items/bogus`) calls `notFound()` and renders the app
+  shell's 404. Resolving against `SYSTEM_ITEM_TYPES` rather than the DB keeps the
+  lookup a pure in-memory match and reuses the single source of truth for type
+  color/icon (no hex restated — the header icon and card border both read
+  `systemType.color`). Pulled the slug/label pluralization out of
+  `getSidebarItemTypes` into `typeSlug` / `typeLabel` so the two callers can't drift
+  (byte-identical output, sidebar screenshot-unchanged). Data comes from a new
+  `getItemsByType(name)` in `src/lib/db/items.ts`, user-scoped via
+  `getCurrentUserId()` and short-circuiting to `[]` when null — the same null-safe
+  shape the other item queries use so an empty/absent user never crashes the render
+  (the `fix/empty-database-render` guard). It reuses the shared `itemQuery` select and
+  `toDashboardItem` view model, so the page gets the same type-derived icon/border,
+  tags and markers as the dashboard with no new mapping. **Ordering is
+  `[{ isPinned: "desc" }, { createdAt: "desc" }]`** — pinned items float to the top,
+  then newest — added on request during the review; verified live that the one pinned
+  snippet (`useDebounce hook`) jumped from 4th to 1st. New `ItemCard`
+  (`src/components/items/ItemCard.tsx`) is a card-shaped sibling of `ItemRow` (not a
+  reuse — the spec asked for a grid, `ItemRow` is a full-width list row): left border
+  in the type color, `ItemTypeIcon` in a tinted box, 2-line description clamp, wrapped
+  tags, pin + `FavoriteStar` markers, `h-full flex-col` so cards in a row share
+  height. Grid is `grid-cols-1 md:grid-cols-2` per the spec's "two columns on medium
+  and up"; a dashed empty-state panel ("No {type} yet.") shows when the user has none.
+  `generateMetadata` sets the tab title to the type label (falls back to "Items" for an
+  unresolved slug; the page still 404s). The page uses `connection()` like the other
+  app pages so `next build` never touches the DB (it's dynamic anyway via `auth()`),
+  and `getItemsByType` runs at request time. Verified against the development branch as
+  the seeded demo user: `/items/snippets` (4 cards, blue borders, sidebar count
+  matches), `/items/commands` (5, orange, clean console), `/items/notes` (empty state),
+  `/items/bogus` → 404 in-shell, pinned-first ordering, and 375px mobile as a single
+  column with no horizontal overflow (measured `scrollWidth === innerWidth`); build and
+  lint clean, `ƒ /items/[type]` dynamic while `○ /` stays static. Scope kept tight —
+  cards are static (no link/drawer; item detail is a later feature), matching `ItemRow`.
+  Two notes for later: `getItemsByType` matches by `itemType.name` without an
+  `isSystem` filter, harmless until a custom (Pro) type reuses a system name; and the
+  dev-only `.claude/launch.json` preview config was gitignored rather than committed.
+  One dev-only artifact worth remembering: in Next.js 16 turbopack, `notFound()`
+  throwing during render trips a "Performance.measure … negative time stamp" overlay
+  warning naming the page component — cosmetic, absent from the normal render path and
+  the production build. Merged to `main` via `feature/item-list-view`.
