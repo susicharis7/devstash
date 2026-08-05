@@ -16,7 +16,9 @@ This is the common workflow that we will use for every single feature/fix:
 1. **Document** - Document the feature in @context/current-feature.md.
 2. **Branch** - Create new branch for feature, fix, etc
 3. **Implement** - Implement the feature/fix that I create in @context/current-feature.md
-4. **Test** - Verify it works in the browser. Implement unit testing later. Run `npm run build` and fix any errors
+4. **Test** - Verify it works in the browser. Add/adjust unit tests for any server
+   actions or utilities the feature touches (see [Testing](#testing)) and run
+   `npm run test`. Run `npm run build` and fix any errors
 5. **Iterate** - Iterate and change things if needed
 6. **Commit** - Only after build passes and everything works
 7. **Merge** - Merge to main
@@ -38,6 +40,19 @@ We will create a new branch for every feature/fix. Name branch **feature/[featur
 - Use conventional commit messages (feat:, fix:, chore:, etc.)
 - Keep commits focused (one feature/fix per commit)
 - Never put "Generated With Claude" in the commit messages
+
+## Testing
+
+- Unit tests run on **Vitest** (`npm run test` for a one-shot run, `npm run test:watch`
+  while developing).
+- **Test server actions and utilities only — do NOT test components/UI.** UI is verified
+  in the browser during the Test step.
+- Colocate tests as `*.test.ts` beside the module under test.
+- Prefer testing pure utilities directly. For server actions, `vi.mock` the `@/auth`,
+  `@/lib/prisma`, and `@/lib/db/current-user` dependencies so no real DB/adapter is
+  constructed.
+- Not every feature needs new tests, but any new or changed server action or utility
+  should be covered. Build must still pass — tests are excluded from the build type-check.
 
 ## When Stuck
 
