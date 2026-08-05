@@ -651,3 +651,21 @@ Not Started
   their tests using these conventions — the SKILL.md/test.md scaffolding had appeared in the
   tree from outside my edits and was confirmed intended, then fleshed out with the mock
   pattern. Merged to `main` via `feature/vitest-setup`.
+- **2026-08-05 — Cleanup: dropped the standing example tests, tests now come from
+  `/feature test`.** A `/cleanup` pass right after the Vitest setup. Per direction that
+  tests should be produced per-feature by the `/feature test` action rather than sitting as
+  a generic batch: **deleted all 7 `*.test.ts` files** (`item-types`, `utils`,
+  `validations/auth`, `rate-limit`, `auth/errors`, `email/send-email`, `actions/account`) —
+  the vitest-setup entry above documents what they covered. The Vitest **infrastructure
+  stays**: `vitest.config.mts` keeps the `@/*` alias, the `next/server` → physical-file
+  alias, and `server.deps.inline` for next-auth, because those are exactly what the next
+  `/feature test` run needs to resolve modules on this codebase (stripping them would force
+  re-deriving the three resolution traps). Added `test.passWithNoTests: true` so
+  `npm run test` exits 0 while the suite is empty. **Removed the unused `vite-tsconfig-paths`
+  devDependency** — the setup installed it but the config resolves paths via an explicit
+  `resolve.alias` instead, so it was referenced nowhere. Also deleted a stray macOS
+  `.claude/skills/feature/actions/.DS_Store` from disk (was untracked/gitignored). Other
+  `/cleanup` checks were clean: history in order, no `console.log` in `src/`, `@ts-nocheck`
+  only in the gitignored generated Prisma client, lint clean, and `.env` is empty with all
+  vars living in `.env.development`/`.env.production`. Build and lint verified unaffected.
+  Merged to `main` via `chore/cleanup-tests`.
