@@ -51,6 +51,10 @@ We will create a new branch for every feature/fix. Name branch **feature/[featur
 - Prefer testing pure utilities directly. For server actions, `vi.mock` the `@/auth`,
   `@/lib/prisma`, and `@/lib/db/current-user` dependencies so no real DB/adapter is
   constructed.
+- **Tests are a per-feature validation gate, not permanent files.** `/feature test`
+  generates them for the current feature; `/feature complete` runs them, then deletes all
+  `src/**/*.test.ts` before committing — `main` carries no standing tests. Regenerate any
+  time with `/feature test`.
 - Not every feature needs new tests, but any new or changed server action or utility
   should be covered. Build must still pass — tests are excluded from the build type-check.
 

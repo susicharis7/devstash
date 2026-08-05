@@ -1,5 +1,9 @@
 # Test Action
 
+These tests are a **per-feature validation gate, not permanent files**: `/feature complete`
+deletes all `src/**/*.test.ts` before committing, so they never land in `main` and the repo
+carries no standing tests. Regenerate them any time by running `/feature test` again.
+
 1. Read current-feature.md to understand what was implemented
 2. Identify server actions and utility functions added/modified for this feature
 3. Check if tests already exist for these functions

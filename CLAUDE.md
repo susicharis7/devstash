@@ -64,7 +64,9 @@ npm run db:test     # verify the database connection
 Unit tests run on **Vitest** (`vitest.config.mts`, Node environment). Scope is
 **server actions and utilities only — no component/UI tests**. Tests are colocated as
 `*.test.ts` next to the module they cover and are excluded from the `next build`
-type-check (`tsconfig.json`). Because importing `@/lib/prisma` or `@/auth` constructs
+type-check (`tsconfig.json`). They are **ephemeral** — `/feature test` generates them
+per feature and `/feature complete` deletes all `src/**/*.test.ts` before committing, so
+`main` carries no standing tests (regenerate any time with `/feature test`). Because importing `@/lib/prisma` or `@/auth` constructs
 the Prisma adapter at load, utility tests target modules that avoid those imports, and
 server-action tests `vi.mock` them. `next/server` and `next-auth` need vitest's alias +
 `server.deps.inline` (already wired in the config) to resolve under Node.
