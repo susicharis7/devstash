@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/db/current-user";
@@ -91,7 +93,9 @@ async function countItemsByType(userId: string | null) {
   return new Map(grouped.map((group) => [group.itemTypeId, group._count._all]));
 }
 
-export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
+export const getSidebarItemTypes = cache(async (): Promise<
+  SidebarItemType[]
+> => {
   const userId = await getCurrentUserId();
   const [types, countByType] = await Promise.all([
     prisma.itemType.findMany({
@@ -117,4 +121,4 @@ export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
       count: countByType.get(type.id) ?? 0,
       isPro: PRO_TYPE_NAMES.has(type.name),
     }));
-}
+});

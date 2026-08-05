@@ -32,5 +32,6 @@ export const config = {
     "/register",
     "/dashboard",
     "/dashboard/:path*",
+    "/profile",
   ],
 };

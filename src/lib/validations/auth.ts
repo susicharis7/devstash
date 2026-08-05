@@ -41,3 +41,15 @@ export const resetPasswordSchema = z
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, passwordsMatch);
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    password: passwordField,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, passwordsMatch)
+  .refine((data) => data.password !== data.currentPassword, {
+    message: "New password must be different from your current password",
+    path: ["password"],
+  });
