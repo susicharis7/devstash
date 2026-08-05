@@ -1,18 +1,33 @@
-# Current Feature
+# Current Feature: Profile Page
 
-<!-- Load a spec with /feature load [spec-name] -->
+<!-- Spec: context/features/14-profile-spec.md -->
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- Add a protected `/profile` route (currently 404s from the sidebar avatar link)
+- Display user info: email, name, avatar (GitHub image or initials), account creation date
+- Show usage stats: total items, total collections, and a per-type breakdown
+  (snippets, prompts, notes, commands, links, files, images)
+- Change password — only for accounts that signed up with email/password, not GitHub OAuth
+- Delete account, behind a confirmation dialog
+- Follow existing patterns for data fetching (server components + `src/lib/db/*`) and components
 
 ## Notes
 
-<!-- Populated by /feature load -->
+- Avatar: reuse `src/components/user/UserAvatar.tsx` (image-or-initials split already centralized)
+- Change password visibility keys off `User.password != null`, the same signal
+  `authorize` and the forgot-password flow use for "email account"
+- Delete account cascades — `Item`, `Collection`, `Account`, `Session` all have
+  `onDelete: Cascade` on `userId`
+- Type breakdown can likely reuse `countItemsByType(userId)` in `src/lib/db/items.ts`
+- Route protection: add to the `src/proxy.ts` matcher (allowlist, not a negative pattern)
+- Password change should reuse `src/lib/auth/password.ts` (`hashPassword` / `verifyPassword`)
+- Open question at implementation time: existing JWT sessions survive a password
+  change (recorded as unfixed in the forgot-password entry) — same limitation applies here
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
