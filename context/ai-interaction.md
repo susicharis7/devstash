@@ -23,6 +23,8 @@ This is the common workflow that we will use for every single feature/fix:
 8. **Delete Branch** - Delete branch after merge
 9. **Review** - Review AI-generated code periodically and on demand.
 10. Mark as completed in @context/current-feature.md and add to history
+11. After finishing the testing of the feature, kill all running servers that you started
+
 
 Do NOT commit without permission and until the build passes. If build fails, fix the issues first.
 
