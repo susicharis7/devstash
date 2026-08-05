@@ -1,28 +1,18 @@
-# Current Feature: Vitest unit testing setup
+# Current Feature
+
+<!-- Load a spec with /feature load [spec-name] -->
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Set up Vitest as the project's unit test runner (was "no test runner configured").
-- Scope tests to **server actions and utilities only** — no component/UI tests.
-- Resolve the `@/*` path alias in tests and run in a Node environment (no jsdom/React).
-- Add `npm run test` (one-shot) and `npm run test:watch` scripts.
-- Write a representative suite: pure utilities plus at least one server action (with mocks).
-- Update the workflow in `ai-interaction.md` and other docs to fold testing in.
+<!-- Populated by /feature load -->
 
 ## Notes
 
-- No spec file — inline request.
-- Trap: importing `@/lib/prisma` or `@/auth` constructs the Prisma pg adapter at module load
-  (needs `DATABASE_URL`). Utility tests must target modules that don't import those; server-action
-  tests must `vi.mock` them.
-- Testable pure utilities: `item-types`, `utils` (cn), `validations/auth` (zod), `rate-limit`
-  (`getClientIp`, `rateLimitMessage`), `auth/errors`, `email/send-email` (`buildAppUrl`).
-- Server action to cover: `actions/account.ts` `changePasswordAction` (clean branch coverage).
-- Keep test files out of the `next build` type-check so production build stays decoupled.
+<!-- Populated by /feature load -->
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->
@@ -615,3 +605,49 @@ In Progress
   throwing during render trips a "Performance.measure … negative time stamp" overlay
   warning naming the page component — cosmetic, absent from the normal render path and
   the production build. Merged to `main` via `feature/item-list-view`.
+- **2026-08-05 — Vitest unit testing setup (server actions + utilities only).** Stood up
+  the project's first test runner — `CLAUDE.md` had literally said "no test runner
+  configured." Installed `vitest@4.1.10` and `vite-tsconfig-paths` as dev deps; scope is
+  **server actions and utilities, never components** (UI stays browser-verified). Two
+  scripts: `npm run test` (`vitest run`, one-shot for CI/the workflow) and
+  `npm run test:watch`. **No jsdom / React / testing-library** — the Next.js guide's setup
+  is component-oriented, so a leaner Node-environment config is correct here.
+  `vitest.config.mts` (`.mts` per the Next guide, dodging CJS/ESM ambiguity in a
+  non-`type:module` package). **Three resolution traps, all config-level:** (1) the `@/*`
+  alias — `vite-tsconfig-paths` honours `tsconfig` `exclude`, and since test files are
+  excluded from the build type-check (see below) the plugin skipped them, so the alias is
+  instead declared explicitly as `resolve.alias` `/^@\/(.*)$/ → src/$1` (an anchored regex,
+  because a bare `@` prefix alias would also swallow `@auth/core`). (2) `next/server` —
+  imported by `rate-limit.ts` (`NextResponse`) and by `next-auth`; vitest's Node resolver
+  can't resolve the bare specifier, so it's aliased to the physical
+  `node_modules/next/server.js` (which exists; Next has no restrictive `exports` blocking
+  it). (3) that alias only reaches *our* source, not `next-auth`'s internal
+  `next/server` import (node_modules are externalized), so `test.server.deps.inline:
+  ["next-auth", "@auth/core"]` forces vitest to transform next-auth through the resolver —
+  required for the `auth/errors` test, which imports `CredentialsSignin`. **The
+  Prisma-adapter-at-import trap** drove the whole test taxonomy: importing `@/lib/prisma`
+  or `@/auth` constructs the `PrismaPg` adapter at module load (needs `DATABASE_URL`), so
+  pure-utility tests target modules that avoid those imports, and the one server-action
+  test `vi.mock`s `@/auth`, `@/lib/prisma`, `@/lib/db/current-user` and the password lib so
+  nothing real is constructed — note `actions/account.ts`'s `"use server"` directive is
+  just an inert string under vitest, the functions call fine directly. Suite: 42 tests / 7
+  files — `item-types` (slug/label/`getSystemTypeBySlug` round-trip, Pro set), `utils`
+  (`cn` conflict-resolution), `validations/auth` (email lowercasing, 8–72 password bounds,
+  mismatch path, new≠current), `rate-limit` (`getClientIp` XFF-first/`x-real-ip`/loopback
+  fallback, `rateLimitMessage` pluralization), `auth/errors` (codes + `retryAfterSeconds` +
+  `instanceof CredentialsSignin`), `email/send-email` (`buildAppUrl` AUTH_URL-vs-origin and
+  trailing-slash strip via `vi.stubEnv`), and `actions/account`
+  (`changePasswordAction`/`deleteAccountAction`: not-signed-in, bad input, OAuth-only,
+  wrong-password, success-hashes-and-stores, DB-throws-generic, delete-then-signOut).
+  **Test files are excluded from the `next build` type-check** (`tsconfig` `exclude`
+  `**/*.test.ts`/`**/*.spec.ts`) so the production build stays decoupled from test-only
+  type strictness (partial `as never` mocks); build and lint verified unaffected, `○ /`
+  still static. Colocated `*.test.ts` beside each module. Wired testing into the workflow:
+  `ai-interaction.md` step 4 now runs `npm run test` and there's a Testing section;
+  `coding-standards.md` gained a Testing block; `CLAUDE.md` documents the runner and the
+  resolution wiring; `project-overview.md` tech stack has a Vitest row. Also added a
+  **`/feature test` action** (`.claude/skills/feature/actions/test.md` + SKILL.md
+  argument-hint/table) that finds a feature's server actions and utilities and writes/checks
+  their tests using these conventions — the SKILL.md/test.md scaffolding had appeared in the
+  tree from outside my edits and was confirmed intended, then fleshed out with the mock
+  pattern. Merged to `main` via `feature/vitest-setup`.
