@@ -44,3 +44,6 @@ next-env.d.ts
 
 # playwright mcp artifacts
 .playwright-mcp/
+
+# local preview server config
+.claude/launch.json
