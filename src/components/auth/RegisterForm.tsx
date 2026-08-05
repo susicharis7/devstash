@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AuthError } from "@/components/auth/AuthError";
 import { AuthField } from "@/components/auth/AuthField";
 import { Button } from "@/components/ui/button";
+import { notifyIfRateLimited } from "@/lib/rate-limit-toast";
 import { registerSchema } from "@/lib/validations/auth";
 
 type RegisterField = "name" | "email" | "password" | "confirmPassword";
@@ -54,7 +55,9 @@ export function RegisterForm() {
       const result = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        setError(result.error ?? "Could not create the account");
+        if (!notifyIfRateLimited(response, result.error)) {
+          setError(result.error ?? "Could not create the account");
+        }
         return;
       }
 

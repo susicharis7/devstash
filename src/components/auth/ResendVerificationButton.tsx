@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { notifyIfRateLimited } from "@/lib/rate-limit-toast";
 
 const FALLBACK_MESSAGE =
   "If that address needs verifying, a new link is on its way.";
@@ -29,7 +30,10 @@ export function ResendVerificationButton({
 
       const result = (await response.json()) as {
         data?: { message?: string };
+        error?: string;
       };
+
+      if (notifyIfRateLimited(response, result.error)) return;
 
       setMessage(result.data?.message ?? FALLBACK_MESSAGE);
     } catch {

@@ -277,9 +277,9 @@ model Tag {
 | **Language** | [TypeScript](https://www.typescriptlang.org) |
 | **Database** | [Neon](https://neon.tech) — serverless PostgreSQL (cloud) |
 | **ORM** | [Prisma 7](https://www.prisma.io) *(fetch latest docs)* |
-| **Caching** | [Redis](https://redis.io) *(maybe)* |
+| **Redis** | [Upstash Redis](https://upstash.com) — auth rate limiting via `@upstash/ratelimit`; caching still optional |
 | **File Storage** | [Cloudflare R2](https://developers.cloudflare.com/r2/) |
-| **Auth** | [NextAuth v5](https://authjs.dev) — email/password + GitHub OAuth |
+| **Auth** | [NextAuth v5](https://authjs.dev) — email/password + GitHub OAuth, rate limited per IP/email |
 | **AI** | [OpenAI](https://platform.openai.com) — `gpt-5-nano` |
 | **Styling** | [Tailwind CSS v4](https://tailwindcss.com) + [ShadCN UI](https://ui.shadcn.com) |
 

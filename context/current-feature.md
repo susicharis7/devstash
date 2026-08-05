@@ -1,18 +1,64 @@
-# Current Feature
+# Current Feature: Rate Limiting for Auth
 
-<!-- Load a spec with /feature load [spec-name] -->
+<!-- Spec: context/features/15-rate-limiting-spec.md -->
 
 ## Status
 
-Not Started
+In Progress
+
+## Decisions (answered at /feature start)
+
+- **Upstash credentials**: being added now, so real enforcement gets verified.
+- **Toast**: install ShadCN `sonner` + a root `<Toaster />`; inline field errors stay.
+- **Login**: limit inside `authorize`, keyed by IP + email, surfaced via a
+  `CredentialsSignin` subclass like `EmailNotVerifiedError`. No 429 / `Retry-After`
+  for that one endpoint — accepted tradeoff, since the Server Action returns state.
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- Add a reusable rate-limit utility at `src/lib/rate-limit.ts` backed by Upstash Redis
+  (`@upstash/ratelimit`), sliding window, returning `{ success, remaining, reset }`
+- Protect the five auth entry points below at their real paths
+- Return 429 with `{ error: "Too many attempts. Please try again in X minutes." }`
+  plus a `Retry-After` header
+- Surface the limit to the user as a toast
+- Key by IP (from `x-forwarded-for`), combined with email where the spec asks for it
+- **Fail open** — if Upstash is unreachable, allow the request
 
 ## Notes
 
-<!-- Populated by /feature load -->
+### Spec paths vs. real routes
+
+The spec's endpoint table predates the current file layout. The real targets:
+
+| Spec | Actual |
+| --- | --- |
+| `/api/auth/forgot-password` | `/api/auth/password-reset/request` |
+| `/api/auth/reset-password` | `/api/auth/password-reset/confirm` |
+| `/api/auth/resend-verification` | `/api/auth/verify-email/resend` |
+| `/api/auth/register` | same ✓ |
+| `/api/auth/callback/credentials` | NextAuth catch-all — see below |
+
+### Implementation notes
+
+- The existing per-account cooldowns stay: `/api/auth/verify-email/resend` keeps its
+  60-second cooldown off the newest token's `createdAt`, and password-reset request
+  keeps the one derived from `expires - 1h`. Those are per-email and DB-backed; the
+  new limits are per-IP, so they layer rather than overlap. Generic-200 behaviour is
+  intact, so neither leaks which addresses are registered.
+- Registration and reset already returned real status codes, so 429 fits their
+  existing `{ success, error }` shape unchanged.
+
+### Blocked verification
+
+`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are set in both env files and
+match the Upstash console byte-for-byte, but the REST endpoint does not respond from
+this machine: a wrong token gets a fast 401 while the correct one hangs, so auth
+succeeds and then the request stalls. Four VPN tunnels are up behind a corporate
+gateway, which is the likely cause. Consequence: **no 429 has ever been produced**, so
+enforcement, `Retry-After` and every toast are unverified. Both fail-open paths *are*
+verified. ⚠️ The pair must also be added to the Vercel dashboard — same trap as
+`AUTH_URL` in the email-verification entry.
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->

@@ -2,17 +2,22 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
 
 import authConfig, { authProviders } from "@/auth.config";
-import { EmailNotVerifiedError } from "@/lib/auth/errors";
+import { EmailNotVerifiedError, RateLimitedError } from "@/lib/auth/errors";
 import { verifyPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, clearRateLimit, getClientIp } from "@/lib/rate-limit";
 import { signInSchema } from "@/lib/validations/auth";
 
 const DECOY_PASSWORD_HASH =
   "$2b$12$87sl81Wh.f7VC7MRnPEAVeJdLhs2MMk3gZyE70C8aAFHo7pgnTtv2";
 
-async function authorizeCredentials(credentials: unknown) {
+async function authorizeCredentials(credentials: unknown, request: Request) {
   const parsed = signInSchema.safeParse(credentials);
   if (!parsed.success) return null;
+
+  const rateLimitKey = `${getClientIp(request)}:${parsed.data.email}`;
+  const limit = await checkRateLimit("signIn", rateLimitKey);
+  if (!limit.success) throw new RateLimitedError(limit.retryAfterSeconds);
 
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email },
@@ -34,6 +39,8 @@ async function authorizeCredentials(credentials: unknown) {
   if (!user?.password || !passwordMatches) return null;
 
   if (!user.emailVerified) throw new EmailNotVerifiedError();
+
+  await clearRateLimit("signIn", rateLimitKey);
 
   return { id: user.id, name: user.name, email: user.email, image: user.image };
 }

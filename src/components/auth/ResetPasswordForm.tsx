@@ -9,6 +9,7 @@ import { AuthError } from "@/components/auth/AuthError";
 import { AuthField } from "@/components/auth/AuthField";
 import { AuthIcon } from "@/components/auth/AuthIcon";
 import { Button } from "@/components/ui/button";
+import { notifyIfRateLimited } from "@/lib/rate-limit-toast";
 import { resetPasswordSchema } from "@/lib/validations/auth";
 
 type ResetField = "password" | "confirmPassword";
@@ -91,7 +92,9 @@ export function ResetPasswordForm({
       const result = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        setError(result.error ?? "Could not reset the password");
+        if (!notifyIfRateLimited(response, result.error)) {
+          setError(result.error ?? "Could not reset the password");
+        }
         return;
       }
 

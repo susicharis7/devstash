@@ -4,6 +4,11 @@ import {
   consumePasswordResetToken,
   type ResetOutcome,
 } from "@/lib/auth/password-reset-tokens";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { resetPasswordSchema } from "@/lib/validations/auth";
 
 const FAILURE_MESSAGES: Record<Exclude<ResetOutcome, "reset">, string> = {
@@ -17,6 +22,12 @@ function errorResponse(error: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  const limit = await checkRateLimit(
+    "passwordResetConfirm",
+    getClientIp(request)
+  );
+  if (!limit.success) return rateLimitResponse(limit);
+
   let body: unknown;
 
   try {

@@ -3,12 +3,18 @@
 import { AuthError, CredentialsSignin } from "next-auth";
 
 import { signIn, signOut } from "@/auth";
-import { EMAIL_NOT_VERIFIED_CODE } from "@/lib/auth/errors";
+import {
+  EMAIL_NOT_VERIFIED_CODE,
+  RATE_LIMITED_CODE,
+  RateLimitedError,
+} from "@/lib/auth/errors";
+import { rateLimitMessage } from "@/lib/rate-limit";
 import { signInSchema } from "@/lib/validations/auth";
 
 export interface SignInState {
   error: string | null;
   unverifiedEmail?: string;
+  rateLimited?: boolean;
 }
 
 const INVALID_CREDENTIALS = "Invalid email or password";
@@ -41,6 +47,18 @@ export async function signInWithCredentials(
       error.code === EMAIL_NOT_VERIFIED_CODE
     ) {
       return { error: EMAIL_NOT_VERIFIED, unverifiedEmail: parsed.data.email };
+    }
+    if (
+      error instanceof CredentialsSignin &&
+      error.code === RATE_LIMITED_CODE
+    ) {
+      const retryAfterSeconds =
+        error instanceof RateLimitedError ? error.retryAfterSeconds : 900;
+
+      return {
+        error: rateLimitMessage(retryAfterSeconds),
+        rateLimited: true,
+      };
     }
     if (error instanceof AuthError) {
       return { error: INVALID_CREDENTIALS };
