@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { hashPassword } from "@/lib/auth/password";
 import { sendVerificationEmail } from "@/lib/email/send-verification-email";
 import { prisma } from "@/lib/prisma";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { registerSchema } from "@/lib/validations/auth";
 
 function errorResponse(error: string, status: number) {
@@ -10,6 +15,9 @@ function errorResponse(error: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  const limit = await checkRateLimit("register", getClientIp(request));
+  if (!limit.success) return rateLimitResponse(limit);
+
   let body: unknown;
 
   try {

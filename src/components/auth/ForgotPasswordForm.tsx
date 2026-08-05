@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AuthError } from "@/components/auth/AuthError";
 import { AuthField } from "@/components/auth/AuthField";
 import { Button } from "@/components/ui/button";
+import { notifyIfRateLimited } from "@/lib/rate-limit-toast";
 import { forgotPasswordSchema } from "@/lib/validations/auth";
 
 const FALLBACK_MESSAGE =
@@ -71,7 +72,10 @@ export function ForgotPasswordForm() {
 
       const result = (await response.json()) as {
         data?: { message?: string };
+        error?: string;
       };
+
+      if (notifyIfRateLimited(response, result.error)) return;
 
       setMessage(result.data?.message ?? FALLBACK_MESSAGE);
     } catch {

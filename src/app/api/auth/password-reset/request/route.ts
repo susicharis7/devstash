@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { isWithinResetCooldown } from "@/lib/auth/password-reset-tokens";
 import { sendPasswordResetEmail } from "@/lib/email/send-password-reset-email";
 import { prisma } from "@/lib/prisma";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { forgotPasswordSchema } from "@/lib/validations/auth";
 
 const GENERIC_MESSAGE =
@@ -16,6 +21,12 @@ function genericResponse() {
 }
 
 export async function POST(request: Request) {
+  const limit = await checkRateLimit(
+    "passwordResetRequest",
+    getClientIp(request)
+  );
+  if (!limit.success) return rateLimitResponse(limit);
+
   let body: unknown;
 
   try {

@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { isWithinResendCooldown } from "@/lib/auth/verification-tokens";
 import { sendVerificationEmail } from "@/lib/email/send-verification-email";
 import { prisma } from "@/lib/prisma";
+import {
+  checkRateLimit,
+  getClientIp,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 import { resendVerificationSchema } from "@/lib/validations/auth";
 
 const GENERIC_MESSAGE =
@@ -28,6 +33,12 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return genericResponse();
   }
+
+  const limit = await checkRateLimit(
+    "verificationResend",
+    `${getClientIp(request)}:${parsed.data.email}`
+  );
+  if (!limit.success) return rateLimitResponse(limit);
 
   try {
     const user = await prisma.user.findUnique({

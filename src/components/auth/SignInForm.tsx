@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { toast } from "sonner";
 
 import { signInWithCredentials, signInWithGitHub } from "@/actions/auth";
 import { AuthError } from "@/components/auth/AuthError";
@@ -16,6 +17,12 @@ export function SignInForm({ callbackUrl }: { callbackUrl: string }) {
     signInWithCredentials,
     { error: null }
   );
+
+  useEffect(() => {
+    if (state.rateLimited && state.error) {
+      toast.error(state.error);
+    }
+  }, [state]);
 
   return (
     <div className="space-y-5">
@@ -35,7 +42,9 @@ export function SignInForm({ callbackUrl }: { callbackUrl: string }) {
 
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="callbackUrl" value={callbackUrl} />
-        {state.error ? <AuthError message={state.error} /> : null}
+        {state.error && !state.rateLimited ? (
+          <AuthError message={state.error} />
+        ) : null}
         {state.unverifiedEmail ? (
           <ResendVerificationButton
             email={state.unverifiedEmail}
