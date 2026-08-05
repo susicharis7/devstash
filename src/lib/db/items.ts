@@ -3,7 +3,12 @@ import { cache } from "react";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/db/current-user";
-import { PRO_TYPE_NAMES, SYSTEM_TYPE_ORDER } from "@/lib/item-types";
+import {
+  PRO_TYPE_NAMES,
+  SYSTEM_TYPE_ORDER,
+  typeLabel,
+  typeSlug,
+} from "@/lib/item-types";
 
 export interface DashboardItem {
   id: string;
@@ -71,6 +76,20 @@ export async function getRecentItems(limit = 10): Promise<DashboardItem[]> {
   return items.map(toDashboardItem);
 }
 
+export async function getItemsByType(
+  typeName: string
+): Promise<DashboardItem[]> {
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+
+  const items = await prisma.item.findMany({
+    where: { userId, itemType: { name: typeName } },
+    orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
+    ...itemQuery,
+  });
+  return items.map(toDashboardItem);
+}
+
 export interface SidebarItemType {
   id: string;
   name: string;
@@ -114,8 +133,8 @@ export const getSidebarItemTypes = cache(async (): Promise<
     .sort((a, b) => orderIndex(a.name) - orderIndex(b.name))
     .map((type) => ({
       id: type.id,
-      name: `${type.name[0].toUpperCase()}${type.name.slice(1)}s`,
-      slug: `${type.name}s`,
+      name: typeLabel(type.name),
+      slug: typeSlug(type.name),
       icon: type.icon,
       color: type.color,
       count: countByType.get(type.id) ?? 0,

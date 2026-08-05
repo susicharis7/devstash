@@ -1,18 +1,25 @@
-# Current Feature
-
-<!-- Load a spec with /feature load [spec-name] -->
+# Current Feature: Items List View
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Populated by /feature load -->
+- Add a dynamic route `/items/[type]` (e.g. `/items/snippets`, `/items/notes`).
+- Fetch and display items filtered by the route's type, scoped to the signed-in user.
+- Render a responsive grid of `ItemCard` components — two columns on medium screens and up.
+- Give each card a left border colored by its item type.
+- Pinned items sort to the top of the list, then by newest.
+- Follow existing codebase patterns (route group shell, DB helpers, view models, `ItemTypeIcon`, `SYSTEM_ITEM_TYPES`).
 
 ## Notes
 
-<!-- Populated by /feature load -->
+- Spec: `context/features/16-item-list-view-spec.md`.
+- The sidebar Types section already links to `/items/[slug]` (plural slugs like `snippets`), so the route must resolve those slugs back to a type.
+- `ItemCard` does not exist yet — the dashboard uses `ItemRow` (list row). The spec calls for a card grid, so a new `ItemCard` component is expected.
+- Type→color/icon come from `SYSTEM_ITEM_TYPES` / `ItemTypeIcon`; do not restate hex values.
+- All types are navigable during development (Pro gating is display-only).
 
 ## History
 <!-- Keep this updated. Earliest to latest. -->

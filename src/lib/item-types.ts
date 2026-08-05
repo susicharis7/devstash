@@ -31,3 +31,15 @@ export const PRO_TYPE_NAMES = new Set(
 );
 
 export const FALLBACK_COLOR = "#6b7280";
+
+export function typeSlug(name: string): string {
+  return `${name}s`;
+}
+
+export function typeLabel(name: string): string {
+  return `${name[0].toUpperCase()}${name.slice(1)}s`;
+}
+
+export function getSystemTypeBySlug(slug: string): SystemItemType | undefined {
+  return SYSTEM_ITEM_TYPES.find((type) => typeSlug(type.name) === slug);
+}
