@@ -1,9 +1,9 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 
 import authConfig, { authProviders } from "@/auth.config";
 import { EmailNotVerifiedError } from "@/lib/auth/errors";
+import { verifyPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/prisma";
 import { signInSchema } from "@/lib/validations/auth";
 
@@ -26,7 +26,7 @@ async function authorizeCredentials(credentials: unknown) {
     },
   });
 
-  const passwordMatches = await bcrypt.compare(
+  const passwordMatches = await verifyPassword(
     parsed.data.password,
     user?.password ?? DECOY_PASSWORD_HASH
   );
